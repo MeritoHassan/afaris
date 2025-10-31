@@ -1,0 +1,23 @@
+
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AFARIS – Scanner</title>
+<style>body{font-family:Arial;background:#0b0f1a;color:#e9eef8;margin:0}header{padding:12px;text-align:center;background:#111827}main{display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}video,canvas{width:100%;max-width:420px;border-radius:12px}.status{padding:10px 12px;border-radius:8px;background:#111827}.ok{background:#14532d}.bad{background:#7f1d1d}</style>
+</head>
+<body>
+<header><h2>AFARIS – Contrôle des billets</h2></header>
+<main>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" hidden></canvas>
+  <div id="msg" class="status">Prêt à scanner…</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+const API = '/api/validate';
+const video=document.getElementById('video');const canvas=document.getElementById('canvas');const ctx=canvas.getContext('2d');const msg=document.getElementById('msg');
+async function start(){const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});video.srcObject=stream;requestAnimationFrame(tick);}
+async function tick(){if(video.readyState===video.HAVE_ENOUGH_DATA){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0,canvas.width,canvas.height);const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);const code=jsQR(imageData.data,canvas.width,canvas.height);if(code&&code.data){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code.data})});const d=await r.json();if(d.ok){msg.textContent=`✅ Valide: ${d.ticketId} – ${d.name} (${d.type})`;msg.className='status ok';}else{msg.textContent=`❌ Refusé: ${d.reason||'Invalide'}`;msg.className='status bad';}}catch(e){msg.textContent='Erreur réseau';msg.className='status bad';}await new Promise(r=>setTimeout(r,1200));}}requestAnimationFrame(tick);}start();
+</script>
+</body>
+</html>

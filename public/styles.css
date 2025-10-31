@@ -1,0 +1,30 @@
+
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:#0b0f1a;color:#e9eef8}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+.nav{position:sticky;top:0;background:rgba(11,15,26,.7);backdrop-filter:blur(6px);border-bottom:1px solid rgba(255,255,255,.06)}
+.nav .brand{display:flex;align-items:center;gap:10px;font-weight:800}
+.logo{height:36px}
+.nav a{color:#e9eef8;text-decoration:none;margin-left:12px}
+.btn{padding:10px 14px;border:1px solid rgba(255,255,255,.2);border-radius:12px}
+.btn.primary{background:#ef3b57;border:none;color:#fff}
+.hero{padding:48px 0;background:radial-gradient(800px 320px at 10% -10%, rgba(239,59,87,.25), transparent) }
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center}
+.accent{color:#ef3b57}
+.artist{width:100%;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.chips span{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;margin-right:6px;margin-top:8px;font-size:12px;color:#9aa3b2}
+.info .grid{display:grid;grid-template-columns:1fr .8fr;gap:16px;margin:28px 0}
+.card{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px}
+.foot{display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.06);padding:16px 0;margin-top:20px}
+/* purchase */
+.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+label{display:block;margin-top:10px}
+input[type="text"],input[type="email"],input[type="number"]{width:100%;padding:10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#e9eef8;margin-top:6px}
+.tickets{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ticket-card{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid #1f2937;border-radius:12px;background:#0c1322;cursor:pointer}
+.ticket-card input{margin-top:4px}
+.muted{color:#9aa3b2}
+.total{margin-top:12px;font-weight:800}
+.pay-actions{display:flex;gap:10px;margin-top:10px}
+.notice,.success{margin-top:12px;padding:12px;border-radius:10px;background:#0c1322;border:1px solid #1f2937}
+.success{border-color:#10b981}
+@media(max-width:900px){.hero-grid,.grid2,.info .grid{grid-template-columns:1fr}}

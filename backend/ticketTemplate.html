@@ -1,0 +1,14 @@
+
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color:#333">
+    <h2 style="color:#c0392b">{{EVENT_NAME}}</h2>
+    <p>Bonjour {{NAME}},</p>
+    <p>Voici votre billet pour le <b>{{EVENT_DATE}}</b>.</p>
+    <p><b>Type :</b> {{TICKET_TYPE}}<br/>
+       <b>ID Billet :</b> {{TICKET_ID}}</p>
+    <p>Présentez ce QR code à l'entrée :</p>
+    <img src="{{QR_DATA_URL}}" alt="QR Code" style="width:220px;height:220px;border:1px solid #eee;"/>
+    <p style="font-size:12px;color:#777">Billet unique, invalidé après le premier scan.</p>
+  </body>
+</html>
