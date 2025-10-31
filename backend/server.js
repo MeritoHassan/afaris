@@ -174,4 +174,67 @@ app.post('/api/validate', (req,res)=>{
   }
 });
 
+/* ============================
+   TESTS E-MAILS / BILLETS (DIAGNOSTIC)
+   À coller avant: // ---------- Start ----------
+   ============================ */
+
+// Test e-mail simple (vérifie juste que le SMTP envoie bien un mail)
+app.post('/api/test-email', express.json(), async (req, res) => {
+  try {
+    if (!EMAILS_ENABLED || !transporter) {
+      return res.status(400).json({ ok: false, error: 'Emails désactivés (SMTP incomplet ou KO)' });
+    }
+    const { to } = req.body || {};
+    if (!to) return res.status(400).json({ ok: false, error: 'missing "to"' });
+
+    const info = await transporter.sendMail({
+      from: ORGANIZER_EMAIL || SMTP_USER,
+      to,
+      subject: '[AFARIS] Test email Render',
+      html: `<p>✅ Test e-mail OK depuis Render.</p><p>Date: ${new Date().toISOString()}</p>`
+    });
+    console.log('✅ Test email envoyé:', info.messageId);
+    res.json({ ok: true, messageId: info.messageId });
+  } catch (e) {
+    console.error('❌ Test email error:', e);
+    res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
+});
+
+// Test billet complet (génère un QR + envoie le mail avec le template)
+app.post('/api/test-ticket', express.json(), async (req, res) => {
+  try {
+    if (!EMAILS_ENABLED || !transporter) {
+      return res.status(400).json({ ok: false, error: 'Emails désactivés (SMTP incomplet ou KO)' });
+    }
+    const { to, type = 'standard', name = 'Test AFARIS' } = req.body || {};
+    if (!to) return res.status(400).json({ ok: false, error: 'missing "to"' });
+
+    const id = `AFR-TEST-${Date.now()}`;
+    const amount = type === 'vip' ? 40 : 25;
+    const payload = { id, email: to, name, amount, type, issuedAt: Date.now(), source: 'test' };
+    const token = signTicket(payload);
+    const ticket = {
+      id,
+      email: to,
+      name,
+      amount,
+      type,
+      method: 'test',
+      status: 'valid',
+      jwt: token,
+      createdAt: Date.now()
+    };
+
+    await sendTicketEmail(to, ticket);
+    console.log('✅ Test billet envoyé à', to, 'id', id);
+    res.json({ ok: true, id });
+  } catch (e) {
+    console.error('❌ Test billet error:', e);
+    res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
+});
+
+
 app.listen(PORT, ()=>console.log('AFARIS all-in-one running on port', PORT));
