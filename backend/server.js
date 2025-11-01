@@ -459,7 +459,6 @@ app.get('/api/test-ticket-get', async (req, res) => {
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
     const ticket = { id, email: to, name, amount, type, method: 'test', status: 'valid', jwt: token, createdAt: Date.now() };
 
-    // réutilise ton template + QR
     const htmlTemplate = fs.readFileSync(path.join(__dirname, 'ticketTemplate.html'), 'utf8');
     const qrDataUrl = await QRCode.toDataURL(ticket.jwt);
     const html = htmlTemplate
