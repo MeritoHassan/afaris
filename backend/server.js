@@ -483,6 +483,103 @@ app.get('/api/test-ticket-get', async (req, res) => {
   }
 });
 
+/* ====== DIAGNOSTIC MINIMAL (mettre AVANT app.listen) ====== */
+
+// ping santé serveur
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+// état SMTP déjà monté ? (fallback si absent)
+if (!app._router.stack.some(l => l.route && l.route.path === '/api/smtp-check')) {
+  app.get('/api/smtp-check', (req, res) => {
+    res.json({
+      emailsEnabled: typeof EMAILS_ENABLED !== 'undefined' ? EMAILS_ENABLED : false,
+      host: process.env.SMTP_HOST || null,
+      user: process.env.SMTP_USER || null,
+      port: process.env.SMTP_PORT || null,
+    });
+  });
+}
+
+// versions GET faciles pour tester par navigateur (si pas déjà présentes)
+if (!app._router.stack.some(l => l.route && l.route.path === '/api/test-email-get')) {
+  app.get('/api/test-email-get', async (req, res) => {
+    try {
+      if (!EMAILS_ENABLED || !transporter) {
+        return res.status(400).send('Emails désactivés (SMTP incomplet ou KO)');
+      }
+      const to = req.query.to;
+      if (!to) return res.status(400).send('Paramètre "to" manquant ex: ?to=mail@exemple.com');
+      const info = await transporter.sendMail({
+        from: ORGANIZER_EMAIL || process.env.SMTP_USER,
+        to,
+        subject: '[AFARIS] Test email Render (GET)',
+        html: `<p>✅ Test e-mail OK (GET).</p><p>${new Date().toISOString()}</p>`
+      });
+      res.send(`OK, messageId=${info.messageId}`);
+    } catch (e) {
+      res.status(500).send('Erreur: ' + (e.message || e));
+    }
+  });
+}
+
+if (!app._router.stack.some(l => l.route && l.route.path === '/api/test-ticket-get')) {
+  app.get('/api/test-ticket-get', async (req, res) => {
+    try {
+      if (!EMAILS_ENABLED || !transporter) {
+        return res.status(400).send('Emails désactivés (SMTP incomplet ou KO)');
+      }
+      const to = req.query.to;
+      const type = (req.query.type === 'vip') ? 'vip' : 'standard';
+      const name = req.query.name || 'Test AFARIS';
+      if (!to) return res.status(400).send('Paramètre "to" manquant ex: ?to=mail@exemple.com');
+
+      const id = `AFR-TEST-${Date.now()}`;
+      const amount = type === 'vip' ? 40 : 25;
+      const payload = { id, email: to, name, amount, type, issuedAt: Date.now(), source: 'test-get' };
+      const token = jwt.sign(payload, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
+      const htmlTemplate = fs.readFileSync(path.join(__dirname, 'ticketTemplate.html'), 'utf8');
+      const qrDataUrl = await QRCode.toDataURL(token);
+      const html = htmlTemplate
+        .replace(/{{EVENT_NAME}}/g, process.env.EVENT_NAME || 'Soirée AFARIS – Décembre 2025')
+        .replace(/{{EVENT_DATE}}/g, process.env.EVENT_DATE || '2025-12-27')
+        .replace(/{{NAME}}/g, name)
+        .replace(/{{TICKET_ID}}/g, id)
+        .replace(/{{TICKET_TYPE}}/g, type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
+        .replace(/{{QR_DATA_URL}}/g, qrDataUrl);
+
+      await transporter.sendMail({
+        from: (process.env.ORGANIZER_EMAIL || process.env.SMTP_USER),
+        to,
+        subject: `[${process.env.EVENT_NAME || 'AFARIS'}] Votre billet – ${id}`,
+        html,
+      });
+
+      res.send(`OK, billet envoyé à ${to} (id=${id})`);
+    } catch (e) {
+      res.status(500).send('Erreur: ' + (e.message || e));
+    }
+  });
+}
+
+// liste rapide des routes pour contrôle
+app.get('/__routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(mw => {
+    if (mw.route && mw.route.path) {
+      routes.push({ path: mw.route.path, methods: Object.keys(mw.route.methods) });
+    }
+  });
+  res.json(routes);
+});
+/* ====== /DIAGNOSTIC MINIMAL ====== */
+
+
 // ------------------ Start ------------------
 app.listen(PORT, () =>
   console.log('AFARIS all-in-one running on port', PORT)
