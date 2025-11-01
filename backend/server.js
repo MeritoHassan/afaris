@@ -418,6 +418,72 @@ app.post('/api/test-ticket', express.json(), async (req, res) => {
   }
 });
 
+
+// --- TESTS EN GET POUR NAVIGATEUR (à usage temporaire) ---
+// 1) Test email simple: /api/test-email-get?to=mail@exemple.com
+app.get('/api/test-email-get', async (req, res) => {
+  try {
+    if (!EMAILS_ENABLED || !transporter) {
+      return res.status(400).send('Emails désactivés (SMTP incomplet ou KO)');
+    }
+    const to = req.query.to;
+    if (!to) return res.status(400).send('Paramètre "to" manquant ex: ?to=mail@exemple.com');
+
+    const info = await transporter.sendMail({
+      from: ORGANIZER_EMAIL || SMTP_USER,
+      to,
+      subject: '[AFARIS] Test email Render (GET)',
+      html: `<p>✅ Test e-mail OK depuis Render (GET).</p><p>Date: ${new Date().toISOString()}</p>`
+    });
+    res.send(`OK, messageId=${info.messageId}`);
+  } catch (e) {
+    console.error('❌ Test email GET error:', e);
+    res.status(500).send('Erreur: ' + (e.message || e));
+  }
+});
+
+// 2) Test billet: /api/test-ticket-get?to=mail@exemple.com&type=vip&name=Test
+app.get('/api/test-ticket-get', async (req, res) => {
+  try {
+    if (!EMAILS_ENABLED || !transporter) {
+      return res.status(400).send('Emails désactivés (SMTP incomplet ou KO)');
+    }
+    const to = req.query.to;
+    const type = (req.query.type === 'vip') ? 'vip' : 'standard';
+    const name = req.query.name || 'Test AFARIS';
+    if (!to) return res.status(400).send('Paramètre "to" manquant ex: ?to=mail@exemple.com');
+
+    const id = `AFR-TEST-${Date.now()}`;
+    const amount = type === 'vip' ? 40 : 25;
+    const payload = { id, email: to, name, amount, type, issuedAt: Date.now(), source: 'test-get' };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
+    const ticket = { id, email: to, name, amount, type, method: 'test', status: 'valid', jwt: token, createdAt: Date.now() };
+
+    // réutilise ton template + QR
+    const htmlTemplate = fs.readFileSync(path.join(__dirname, 'ticketTemplate.html'), 'utf8');
+    const qrDataUrl = await QRCode.toDataURL(ticket.jwt);
+    const html = htmlTemplate
+      .replace(/{{EVENT_NAME}}/g, EVENT_NAME)
+      .replace(/{{EVENT_DATE}}/g, EVENT_DATE)
+      .replace(/{{NAME}}/g, ticket.name)
+      .replace(/{{TICKET_ID}}/g, ticket.id)
+      .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
+      .replace(/{{QR_DATA_URL}}/g, qrDataUrl);
+
+    await transporter.sendMail({
+      from: ORGANIZER_EMAIL || SMTP_USER,
+      to,
+      subject: `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
+      html,
+    });
+
+    res.send(`OK, billet envoyé à ${to} (id=${id})`);
+  } catch (e) {
+    console.error('❌ Test billet GET error:', e);
+    res.status(500).send('Erreur: ' + (e.message || e));
+  }
+});
+
 // ------------------ Start ------------------
 app.listen(PORT, () =>
   console.log('AFARIS all-in-one running on port', PORT)
