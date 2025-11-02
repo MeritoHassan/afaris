@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { Resend } = require('resend');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -8,7 +9,6 @@ const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { Resend } = require('resend');
 
 const app = express();
 app.use(cors());
