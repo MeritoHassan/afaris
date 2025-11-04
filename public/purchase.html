@@ -1,121 +1,405 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Achat de billets – AFARIS</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&components=buttons,funding-eligibility"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AFARIS — Paiement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b0f16;
+      --panel:#121826;
+      --panel-2:#0f1522;
+      --card:#ffffff;
+      --text:#0b1220;
+      --muted:#6b7280;
+      --brand:#f53d77;
+      --brand-600:#e2346b;
+      --ok:#16a34a;
+      --warn:#f59e0b;
+      --border:#e5e7eb;
+      --shadow:0 10px 30px rgba(0,0,0,.08);
+      --shadow-soft:0 6px 20px rgba(0,0,0,.06);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(120deg,#0b0f16 0%,#0a0f1b 60%,#0b1322 100%);
+      color:#fff;
+    }
+    a{color:inherit;text-decoration:none}
+    .wrap{
+      max-width:1100px;
+      margin:40px auto 80px;
+      padding:0 24px;
+    }
+    header{
+      display:flex;align-items:center;gap:16px;margin-bottom:24px;
+    }
+    header .logo{
+      width:36px;height:36px;border-radius:8px;display:grid;place-items:center;
+      background:#fff;color:#111;font-weight:700;box-shadow:var(--shadow-soft);
+    }
+    header h1{font-size:22px;margin:0;font-weight:700;letter-spacing:.2px}
+    .grid{
+      display:grid;grid-template-columns: 1fr 380px; gap:24px;
+    }
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    /* Cards */
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      color:var(--text);
+    }
+    .card .head{
+      padding:18px 20px;border-bottom:1px solid var(--border);
+      font-weight:600;display:flex;align-items:center;gap:12px;
+    }
+    .card .body{padding:18px 20px}
+    .muted{color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted)}
+
+    /* Inputs */
+    .field{margin-bottom:16px}
+    .label{display:block;font-size:13px;margin-bottom:6px;color:#334155;font-weight:600}
+    .input{
+      width:100%;padding:12px 12px;border:1px solid var(--border);
+      border-radius:10px;background:#fff;color:#111;outline:none;
+      box-shadow:0 1px 0 rgba(0,0,0,.02)
+    }
+    .input:focus{border-color:#cbd5e1;box-shadow:0 0 0 4px rgba(245,61,119,.12)}
+    .error{margin-top:6px;color:#b91c1c;font-size:12px;display:none}
+    .field.invalid .input{border-color:#ef4444;background:#fff5f5}
+    .field.invalid .error{display:block}
+
+    /* Payment list */
+    .paylist{display:flex;flex-direction:column;gap:12px;margin:6px 0}
+    .payitem{
+      border:1px solid var(--border);border-radius:12px;background:#fff;
+      padding:14px;display:flex;gap:14px;align-items:flex-start;
+      transition:all .15s ease; cursor:pointer;
+    }
+    .payitem:hover{box-shadow:var(--shadow-soft)}
+    .payitem input{margin-top:4px}
+    .payitem .content{flex:1}
+    .payitem .title{font-weight:600;color:#111;margin-bottom:2px}
+    .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .badge{
+      height:22px;border-radius:6px;background:#f3f4f6;border:1px solid #e5e7eb;
+      padding:3px 8px;font-size:12px;display:inline-flex;align-items:center;gap:6px;
+    }
+    .brand-visa{width:26px;height:16px;background:#1a73e8;border-radius:3px}
+    .brand-mc{width:26px;height:16px;background: radial-gradient(circle at 35% 50%, #ea001b 0 60%, transparent 60%), radial-gradient(circle at 65% 50%, #ff9900 0 60%, transparent 60%);}
+    .brand-bc{width:26px;height:16px;background:#0050ff;border-radius:3px}
+    .brand-pp{width:26px;height:16px;background:#003087;border-radius:3px}
+
+    /* Collapses */
+    .collapse{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb}
+    .payitem.active{border-color:#d1d5db;background:#fafafa}
+    .payitem.active + .collapse{display:block}
+
+    /* Buttons */
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      appearance:none;border:0;border-radius:12px;padding:12px 16px;font-weight:700;
+      background:var(--brand);color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(245,61,119,.25);
+      transition:transform .06s ease, filter .2s ease;
+    }
+    .btn:hover{filter:brightness(.98)}
+    .btn:active{transform:translateY(1px)}
+    .btn.outline{
+      background:#fff;color:#111;border:1px solid var(--border);box-shadow:none;
+    }
+    .btn.block{width:100%}
+    .btn.muted{background:#111827;color:#fff;border:1px solid #1f2937}
+
+    /* Summary */
+    .summary .line{
+      display:flex;justify-content:space-between;margin:10px 0;color:#374151
+    }
+    .summary .total{
+      display:flex;justify-content:space-between;align-items:center;
+      padding-top:12px;margin-top:12px;border-top:1px solid var(--border);
+      font-size:18px;font-weight:800;color:#111;
+    }
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;border-radius:999px;
+      border:1px solid var(--border);padding:6px 10px;background:#fff
+    }
+    .tag{font-size:12px;color:#16a34a;background:#e7f8ed;border:1px solid #b7e8c7;border-radius:999px;padding:2px 8px}
+
+    .footnote{margin-top:14px;color:#64748b;font-size:12px}
+  </style>
 </head>
 <body>
-<header class="nav"><div class="wrap"><a href="index.html" class="brand"><img src="assets/logo_afaris.png" class="logo"> AFARIS</a></div></header>
+  <div class="wrap">
+    <header>
+      <div class="logo">AF</div>
+      <h1>AFARIS — Paiement</h1>
+    </header>
 
-<main class="wrap">
-  <h1>Acheter un billet</h1>
-  <div class="grid2">
-    <section class="card">
-      <h3>Vos informations</h3>
-      <label>Nom et prénom</label>
-      <input id="name" type="text" placeholder="Votre nom complet">
-      <label>Email</label>
-      <input id="email" type="email" placeholder="vous@example.com">
+    <div class="grid">
+      <!-- Col gauche -->
+      <div class="col-left">
+        <!-- Infos client -->
+        <div class="card">
+          <div class="head">Vos informations</div>
+          <div class="body">
+            <div class="row" style="gap:16px">
+              <div class="field" style="flex:1">
+                <label class="label" for="name">Nom et prénom</label>
+                <input id="name" class="input" placeholder="Votre nom complet" />
+                <div class="error">Merci d’indiquer votre nom.</div>
+              </div>
+              <div class="field" style="flex:1">
+                <label class="label" for="email">E-mail</label>
+                <input id="email" class="input" placeholder="vous@email.com" />
+                <div class="error">Merci d’indiquer un e-mail valide.</div>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Type de billet</span>
+              <div class="row">
+                <label class="pill">
+                  <input type="radio" name="ticket" value="standard" checked>
+                  Standard — 25€ <span class="hint" style="margin-left:6px">Billet standard</span>
+                </label>
+                <label class="pill">
+                  <input type="radio" name="ticket" value="vip">
+                  VIP — 40€ <span class="tag">Plat & boisson compris</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <h3 style="margin-top:16px">Type de billet</h3>
-      <div class="tickets">
-        <label class="ticket-card">
-          <input type="radio" name="tt" value="standard" checked>
-          <div><b>Entrée Standard</b> — 25 €<br><span class="muted">Sans menu</span></div>
-        </label>
-        <label class="ticket-card">
-          <input type="radio" name="tt" value="vip">
-          <div><b>Entrée VIP</b> — 40 €<br><span class="muted">Menu compris</span></div>
-        </label>
+        <!-- Paiement -->
+        <div class="card" style="margin-top:18px">
+          <div class="head">Mode de paiement</div>
+          <div class="body">
+
+            <!-- Carte bancaire -->
+            <label class="payitem" data-method="card">
+              <input type="radio" name="method" value="card" checked>
+              <div class="content">
+                <div class="title">Carte bancaire</div>
+                <div class="muted">Visa, Mastercard</div>
+                <div class="badges">
+                  <span class="badge"><span class="brand-visa"></span>VISA</span>
+                  <span class="badge"><span class="brand-mc"></span>Mastercard</span>
+                </div>
+              </div>
+            </label>
+            <div class="collapse">
+              <div class="row">
+                <button id="payCard" class="btn">Payer par carte</button>
+                <button id="payCardAlt" class="btn outline">Utiliser une autre carte</button>
+              </div>
+              <div class="footnote">Saisie sécurisée sur la page de paiement.</div>
+            </div>
+
+            <!-- Bancontact -->
+            <label class="payitem" data-method="bancontact">
+              <input type="radio" name="method" value="bancontact">
+              <div class="content">
+                <div class="title">Bancontact</div>
+                <div class="badges"><span class="badge"><span class="brand-bc"></span>Bancontact</span></div>
+              </div>
+            </label>
+            <div class="collapse">
+              <button id="payBC" class="btn">Payer par Bancontact</button>
+            </div>
+
+            <!-- PayPal -->
+            <label class="payitem" data-method="paypal">
+              <input type="radio" name="method" value="paypal">
+              <div class="content">
+                <div class="title">PayPal</div>
+                <div class="badges"><span class="badge"><span class="brand-pp"></span>PayPal</span></div>
+              </div>
+            </label>
+            <div class="collapse">
+              <button id="payPP" class="btn">Payer avec PayPal</button>
+            </div>
+
+            <!-- Virement (option) -->
+            <details style="margin-top:14px">
+              <summary class="muted" style="cursor:pointer">Autre : virement bancaire</summary>
+              <div class="row" style="margin-top:10px">
+                <button id="payWire" class="btn muted">Réserver et payer par virement</button>
+              </div>
+              <div class="footnote">
+                Vous recevrez immédiatement un e-mail avec la référence et l’IBAN.
+                Le billet est envoyé après réception du paiement.
+              </div>
+            </details>
+
+          </div>
+        </div>
       </div>
 
-      <label>Quantité</label>
-      <input id="qty" type="number" value="1" min="1">
-
-      <div class="total">Total : <span id="total">25</span> €</div>
-
-      <div class="pay-actions">
-        <button id="pay-card" class="btn primary">Payer par carte</button>
-        <button id="pay-transfer" class="btn">Payer par virement</button>
-      </div>
-      <div id="paypal-container" style="margin-top:12px;"></div>
-      <div id="result"></div>
-    </section>
-
-    <aside class="card">
-      <h3>Récapitulatif</h3>
-      <ul class="bullets">
-        <li>Billet envoyé par e‑mail avec QR code unique</li>
-        <li>Standard : 25 € — <b>sans menu</b></li>
-        <li>VIP : 40 € — <b>menu compris</b></li>
-      </ul>
-    </aside>
+      <!-- Col droite : récap -->
+      <aside class="card summary">
+        <div class="head">Récapitulatif</div>
+        <div class="body">
+          <div class="line"><span>Événement</span><b>Soirée AFARIS – Arido</b></div>
+          <div class="line"><span>Date</span><span id="sumDate">27/12/2025</span></div>
+          <div class="line"><span>Heure</span><span>19:00 • Show 20:00</span></div>
+          <div class="line"><span>Lieu</span><span>Quai de l’Industrie 121<br>1080 Molenbeek-Saint-Jean</span></div>
+          <div class="line"><span>Billet</span><span id="sumType">Standard</span></div>
+          <div class="total"><span>Total</span><span id="sumTotal">25,00 €</span></div>
+          <div class="footnote">Un e-mail de confirmation avec QR code unique vous sera envoyé après paiement.</div>
+        </div>
+      </aside>
+    </div>
   </div>
-</main>
 
-<script>
-const API = '/api';
-const qty = document.getElementById('qty');
-const total = document.getElementById('total');
-function pricePerType(){
-  const type = document.querySelector('input[name="tt"]:checked').value;
-  return type === 'vip' ? 40 : 25;
-}
-function recompute(){
-  total.textContent = (Number(qty.value||1) * pricePerType()).toFixed(2);
-}
-qty.addEventListener('input', recompute);
-document.querySelectorAll('input[name="tt"]').forEach(i=>i.addEventListener('change', recompute));
-recompute();
+  <script>
+    // ------- Helpers -------
+    const qs = sel => document.querySelector(sel);
+    const qsa = sel => [...document.querySelectorAll(sel)];
+    const format = (n) => new Intl.NumberFormat('fr-BE', { style:'currency', currency:'EUR' }).format(n);
 
-document.getElementById('pay-transfer').onclick = async () => {
-  const ticketType = document.querySelector('input[name="tt"]:checked').value;
-  const payload = { 
-    name: document.getElementById('name').value, 
-    email: document.getElementById('email').value, 
-    ticketType,
-    amount: Number(total.textContent),
-    method: 'transfer'
-  };
-  const r = await fetch(API + '/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  const data = await r.json();
-  if(data.ok){
-    document.getElementById('result').innerHTML = `<div class="notice">
-      Référence: <b>${data.referenceCode}</b><br>
-      IBAN: <b>${data.iban||'N/D'}</b> ${data.bic? '– BIC: <b>'+data.bic+'</b>':''}<br>
-      Vous recevrez votre billet par e‑mail dès réception du virement.
-    </div>`;
-  } else alert('Erreur: '+(data.error||'inconnue'));
-};
+    // ------- UI state -------
+    const nameEl  = qs('#name');
+    const emailEl = qs('#email');
 
-document.getElementById('pay-card').onclick = async () => {
-  const ticketType = document.querySelector('input[name="tt"]:checked').value;
-  const payload = { 
-    name: document.getElementById('name').value, 
-    email: document.getElementById('email').value, 
-    ticketType,
-    amount: Number(total.textContent),
-    method: 'card'
-  };
-  const r = await fetch(API + '/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  const data = await r.json(); if(!data.ok){alert('Erreur'); return;}
-
-  document.getElementById('paypal-container').innerHTML = '<div id="paypal-buttons"></div>';
-  paypal.Buttons({
-    createOrder: () => data.orderId,
-    onApprove: async () => {
-      const r2 = await fetch(API + '/paypal/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:data.orderId, name: payload.name, email: payload.email, amount: payload.amount, ticketType})});
-      const d2 = await r2.json();
-      if(d2.ok){
-        document.getElementById('result').innerHTML = `<div class="success">Paiement confirmé. Billet envoyé par e‑mail. ID: <b>${d2.ticketId}</b></div>`;
-      } else alert('Erreur confirmation');
+    // collapses
+    const payItems = qsa('.payitem');
+    function refreshCollapses(){
+      const sel = qs('input[name="method"]:checked')?.value || 'card';
+      payItems.forEach(item=>{
+        item.classList.toggle('active', item.dataset.method===sel);
+      });
     }
-  }).render('#paypal-buttons');
-};
-</script>
+    payItems.forEach(item=>{
+      item.addEventListener('click', ()=>{
+        const r = item.querySelector('input[type="radio"]');
+        r.checked = true;
+        refreshCollapses();
+      });
+    });
+    refreshCollapses();
+
+    // ticket selection
+    const ticketRadios = qsa('input[name="ticket"]');
+    function currentTicket(){
+      const v = qs('input[name="ticket"]:checked')?.value || 'standard';
+      const amount = v==='vip' ? 40 : 25;
+      return { type:v, amount };
+    }
+    function updateSummary(){
+      const { type, amount } = currentTicket();
+      qs('#sumType').textContent = (type==='vip') ? 'VIP — Plat & boisson compris' : 'Standard';
+      qs('#sumTotal').textContent = format(amount);
+      qs('#sumDate').textContent = '27/12/2025';
+    }
+    ticketRadios.forEach(r=>r.addEventListener('change', updateSummary));
+    updateSummary();
+
+    // Prefill from ?type=
+    const urlType = new URLSearchParams(location.search).get('type');
+    if (urlType && (urlType==='vip' || urlType==='standard')) {
+      qs(`input[name="ticket"][value="${urlType}"]`).checked = true;
+      updateSummary();
+    }
+
+    // ------- Validation -------
+    function isEmail(x){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); }
+    function validate(){
+      let ok = true;
+      if (!nameEl.value.trim()){
+        nameEl.closest('.field').classList.add('invalid'); ok=false;
+      } else { nameEl.closest('.field').classList.remove('invalid'); }
+      if (!isEmail(emailEl.value.trim())){
+        emailEl.closest('.field').classList.add('invalid'); ok=false;
+      } else { emailEl.closest('.field').classList.remove('invalid'); }
+      return ok;
+    }
+    [nameEl,emailEl].forEach(el=>el.addEventListener('input', validate));
+
+    // ------- API helpers -------
+    async function postJSON(url, data){
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error((await res.text()) || 'HTTP '+res.status);
+      return res.json();
+    }
+
+    async function flowCard(kind){
+      if (!validate()) return;
+      const { type, amount } = currentTicket();
+      const name  = nameEl.value.trim();
+      const email = emailEl.value.trim();
+
+      // 1) créer l'order (simulateur back)
+      const order = await postJSON('/api/create-order', {
+        name, email, ticketType: type, amount, method:'card'
+      });
+
+      // 2) “capturer” (simulateur back) -> émet le billet + e-mail
+      const capture = await postJSON('/api/paypal/capture', {
+        orderId: order.orderId,
+        name, email, amount, ticketType: type
+      });
+
+      // 3) redirect success
+      location.href = `/success.html?ticket=${encodeURIComponent(capture.ticketId)}`;
+    }
+
+    async function flowPayPal(){
+      // même flow que carte côté serveur (seul le “branding” diffère visuellement)
+      return flowCard('paypal');
+    }
+    async function flowBancontact(){
+      return flowCard('bancontact');
+    }
+
+    async function flowWire(){
+      if (!validate()) return;
+      const { type, amount } = currentTicket();
+      const name  = nameEl.value.trim();
+      const email = emailEl.value.trim();
+
+      const o = await postJSON('/api/create-order', {
+        name, email, ticketType: type, amount, method:'transfer'
+      });
+      // petite confirmation douce
+      const msg = [
+        'Votre réservation est enregistrée ✅',
+        '',
+        `Référence : ${o.referenceCode}`,
+        `IBAN : ${o.iban || '—'}`,
+        `BIC  : ${o.bic  || '—'}`,
+        '',
+        'Vous avez aussi reçu ces infos par e-mail.'
+      ].join('\n');
+      alert(msg);
+      location.href='/';
+    }
+
+    // ------- Bind buttons -------
+    qs('#payCard').addEventListener('click', flowCard);
+    qs('#payCardAlt').addEventListener('click', flowCard);
+    qs('#payPP').addEventListener('click', flowPayPal);
+    qs('#payBC').addEventListener('click', flowBancontact);
+    qs('#payWire').addEventListener('click', flowWire);
+
+    // sélection par radio (clavier)
+    qsa('input[name="method"]').forEach(r=>{
+      r.addEventListener('change', refreshCollapses);
+    });
+  </script>
 </body>
 </html>
