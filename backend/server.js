@@ -1,101 +1,130 @@
 require('dotenv').config();
-const { Resend } = require('resend');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const QRCode = require('qrcode');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const QRCode = require('qrcode');
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const {
+  saveTicketRecord,
+  getTicketRecord,
+  computeHash,
+  updateTicketStatus,
+} = require('./utils/ticketsStore');
 
 const app = express();
-app.use(cors());
+
+// ---------- CORS configuration ----------
+const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsMiddleware = corsAllowedOrigins.length
+  ? cors({
+      origin(origin, callback) {
+        if (!origin) return callback(null, true);
+        if (
+          corsAllowedOrigins.includes(origin) ||
+          origin === 'http://localhost' ||
+          origin === 'http://127.0.0.1' ||
+          origin === `http://localhost:${PORT}` ||
+          origin === `http://127.0.0.1:${PORT}`
+        ) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+      },
+    })
+  : cors(); // fallback permissif en local si aucune liste fournie
+
+app.use(corsMiddleware);
 app.use(bodyParser.json());
 
-// --------- Static front (landing + purchase) ---------
-app.use('/', express.static(path.join(__dirname, '..', 'public')));
-
-// --------- ENV ----------
+// ---------- ENV ----------
 const {
   PORT = 4000,
+  HOST = '0.0.0.0',
   EVENT_NAME = 'Soirée AFARIS – Décembre 2025',
   EVENT_DATE = '2025-12-27',
   ORGANIZER_EMAIL = 'billets@afaris.com',
+  JWT_SECRET = 'dev_secret',
 
-  // (option PayPal simulée)
   PAYPAL_ENV = 'sandbox',
   PAYPAL_CLIENT_ID,
   PAYPAL_SECRET,
 
-  IBAN,
-  BIC,
-
-  JWT_SECRET = 'dev_secret',
-
-  // E-mail provider (Resend)
-  MAIL_PROVIDER = 'RESEND',
-  RESEND_API_KEY,
-  FROM_EMAIL, // DOIT être validée dans Resend
+  FROM_EMAIL,
+  SMTP_HOST,
+  SMTP_PORT = 587,
+  SMTP_USER,
+  SMTP_PASS,
+  ENABLE_TEST_TICKETS = 'true',
 } = process.env;
 
-// --------- Stores mémoire ----------
-const tickets = new Map();       // billets émis
-const reservations = new Map();  // réservations virement
+const PAYPAL_BASE_URL =
+  PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 
-// --------- Email Provider (Resend) ----------
-let EMAILS_ENABLED = false;
-let resend = null;
-
-(function initMail() {
-  if ((MAIL_PROVIDER || '').toUpperCase() !== 'RESEND') {
-    console.warn('📭 MAIL_PROVIDER ≠ RESEND → e-mails désactivés');
-    EMAILS_ENABLED = false;
-    return;
-  }
-  if (!RESEND_API_KEY || !FROM_EMAIL) {
-    console.warn('📭 RESEND_API_KEY ou FROM_EMAIL manquants → e-mails désactivés');
-    EMAILS_ENABLED = false;
-    return;
-  }
-  resend = new Resend(RESEND_API_KEY);
-  EMAILS_ENABLED = true;
-  console.log('📬 Using Resend provider (no SMTP). Email system ready.');
-})();
-
-app.get('/api/smtp-check', (_req, res) => {
-  res.json({
-    emailsEnabled: EMAILS_ENABLED,
-    provider: EMAILS_ENABLED ? 'resend' : null,
-    from: FROM_EMAIL || null,
-  });
+const TICKET_PRICES = Object.freeze({
+  standard: 30,
+  vip: 45,
 });
 
-// --------- Helpers ----------
-function signTicketPayload(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
-}
+const TEST_TICKETS_ENABLED = String(ENABLE_TEST_TICKETS).toLowerCase() === 'true';
+
+// ---------- Stores mémoire ----------
+const tickets = new Map(); // billets émis
+const pendingOrders = new Map(); // commandes PayPal en attente de capture
+const completedOrders = new Map(); // commande PayPal -> tickets émis (idempotence)
+
+// ---------- Email (Brevo via SMTP) ----------
+let EMAILS_ENABLED = false;
+let transporter = null;
+
+(async function initMailer() {
+  // on ne force pas l'arrêt si SMTP indisponible : la vente peut continuer
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !FROM_EMAIL) {
+    console.warn('📭 SMTP incomplet → e-mails désactivés');
+    return;
+  }
+
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT) || 587,
+    secure: Number(SMTP_PORT) === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+
+  try {
+    await transporter.verify();
+    EMAILS_ENABLED = true;
+    console.log('📬 SMTP Brevo opérationnel');
+  } catch (err) {
+    console.error('❌ Vérification SMTP échouée :', err.message);
+  }
+})();
 
 async function sendEmailHTML(to, subject, html) {
-  if (!EMAILS_ENABLED || !resend) throw new Error('EMAIL_DISABLED');
-  const resp = await resend.emails.send({
-    from: FROM_EMAIL, // adresse validée chez Resend
+  if (!EMAILS_ENABLED || !transporter) throw new Error('EMAIL_DISABLED');
+
+  return transporter.sendMail({
+    from: FROM_EMAIL,
     to,
+    replyTo: ORGANIZER_EMAIL,
     subject,
     html,
   });
-  if (resp?.error) throw new Error(resp.error.message || 'Resend error');
-  return resp;
 }
 
 async function sendTicketEmail(to, ticket) {
-  if (!EMAILS_ENABLED) throw new Error('EMAIL_DISABLED');
-
   const templatePath = path.join(__dirname, 'ticketTemplate.html');
   const htmlTpl = fs.readFileSync(templatePath, 'utf8');
-
-  const qrDataUrl = await QRCode.toDataURL(ticket.jwt);
+  const qrPngBuffer = await QRCode.toBuffer(ticket.jwt, { width: 300, margin: 1 });
+  const qrCid = `qr_${ticket.id}@afaris`;
 
   const html = htmlTpl
     .replace(/{{EVENT_NAME}}/g, EVENT_NAME)
@@ -103,183 +132,406 @@ async function sendTicketEmail(to, ticket) {
     .replace(/{{NAME}}/g, ticket.name)
     .replace(/{{TICKET_ID}}/g, ticket.id)
     .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
-    .replace(/{{QR_DATA_URL}}/g, qrDataUrl);
+    .replace(/{{QR_DATA_URL}}/g, `cid:${qrCid}`);
 
-  await sendEmailHTML(to, `[${EVENT_NAME}] Votre billet – ${ticket.id}`, html);
+  if (!EMAILS_ENABLED || !transporter) throw new Error('EMAIL_DISABLED');
+
+  return transporter.sendMail({
+    from: FROM_EMAIL,
+    to,
+    replyTo: ORGANIZER_EMAIL,
+    subject: `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
+    html,
+    attachments: [
+      {
+        filename: `ticket-${ticket.id}.png`,
+        content: qrPngBuffer,
+        contentType: 'image/png',
+        cid: qrCid,
+      },
+    ],
+  });
 }
 
-async function sendTransferReservationEmail(to, reservation) {
-  if (!EMAILS_ENABLED) throw new Error('EMAIL_DISABLED');
+// ---------- PayPal helpers ----------
+let paypalToken = null;
+let paypalTokenExpiry = 0;
 
-  const templatePath = path.join(__dirname, '..', 'emails', 'transferReservation.html');
-  const htmlTpl = fs.readFileSync(templatePath, 'utf8');
+async function getPayPalAccessToken() {
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET) {
+    throw new Error('PAYPAL_NOT_CONFIGURED');
+  }
 
-  const html = htmlTpl
-    .replace(/{{EVENT_NAME}}/g, EVENT_NAME)
-    .replace(/{{EVENT_DATE}}/g, EVENT_DATE)
-    .replace(/{{NAME}}/g, reservation.name)
-    .replace(/{{AMOUNT}}/g, reservation.amount.toFixed(2))
-    .replace(/{{REFERENCE}}/g, reservation.referenceCode)
-    .replace(/{{IBAN}}/g, IBAN || '—')
-    .replace(/{{BIC}}/g, BIC || '—');
+  const now = Date.now();
+  if (paypalToken && now < paypalTokenExpiry) {
+    return paypalToken;
+  }
 
-  await sendEmailHTML(to, `[${EVENT_NAME}] Réservation en attente de virement (${reservation.referenceCode})`, html);
+  const credentials = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString('base64');
+
+  const response = await axios({
+    method: 'post',
+    url: `${PAYPAL_BASE_URL}/v1/oauth2/token`,
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    data: 'grant_type=client_credentials',
+  });
+
+  paypalToken = response.data.access_token;
+  paypalTokenExpiry = now + (Number(response.data.expires_in || 0) - 60) * 1000;
+  return paypalToken;
 }
 
-// --------- Health ----------
-app.get('/api/health', (_req, res) =>
-  res.json({ ok: true, time: new Date().toISOString(), email: EMAILS_ENABLED ? 'resend' : 'off' })
-);
+function getTicketPrice(type) {
+  return TICKET_PRICES[type] ?? null;
+}
 
-// --------- Create order (virement ou carte) ----------
-app.post('/api/create-order', async (req, res) => {
-  const { name, email, ticketType, amount, method } = req.body;
-  if (!name || !email || !ticketType || !amount || !method) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
-
-  if (method === 'transfer') {
-    const referenceCode = `AFR-${new Date().getFullYear()}-${String(Math.floor(Math.random()*100000)).padStart(5,'0')}`;
-    const reservation = {
-      email, name, ticketType,
-      amount: Number(amount),
-      referenceCode,
-      createdAt: Date.now(),
-      status: 'pending_transfer',
-    };
-    reservations.set(referenceCode, reservation);
-
-    try { await sendTransferReservationEmail(email, reservation); }
-    catch (e) { console.error('Email error (transfer):', e.message); }
-
-    return res.json({ ok: true, method, referenceCode, iban: IBAN, bic: BIC });
-  }
-
-  if (method === 'card') {
-    // MVP : simuler une order PayPal (si tu veux la vraie intégration, appelle l’API PayPal)
-    const orderId = uuidv4();
-    return res.json({ ok: true, method, orderId });
-  }
-
-  return res.status(400).json({ error: 'Invalid method' });
-});
-
-// --------- Capture (carte) – version simulée ----------
-app.post('/api/paypal/capture', async (req, res) => {
-  const { orderId, name, email, amount, ticketType } = req.body;
-  if (!orderId || !name || !email || !amount || !ticketType) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
-
-  try {
-    const id = `AFR-${Date.now()}-${Math.floor(Math.random()*1000)}`;
-    const payload = { id, email, name, amount:Number(amount), type: ticketType, issuedAt: Date.now(), source: 'paypal' };
-    const token = signTicketPayload(payload);
-    const ticket = { id, email, name, amount:Number(amount), type: ticketType, method:'card', status:'valid', jwt: token, createdAt: Date.now() };
-
-    tickets.set(id, ticket);
-    try { await sendTicketEmail(email, ticket); } catch (e) { console.error('Email error (ticket):', e.message); }
-
-    return res.json({ ok: true, ticketId: id });
-  } catch (e) {
-    console.error('capture error', e.message);
-    return res.status(500).json({ error: 'Capture failed' });
-  }
-});
-
-// --------- Confirmer un virement (quand tu reçois l’argent) ----------
-app.post('/api/confirm-transfer', async (req, res) => {
-  const { referenceCode, name, email, amount, ticketType } = req.body;
-  const r = reservations.get(referenceCode);
-  if (!r) return res.status(404).json({ error: 'Reservation not found' });
-
-  r.status = 'paid';
-
-  const id = `AFR-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+function issueTicket({ name, email, ticketType, amount, orderId, captureId }) {
+  const id = `AFR-${new Date().getFullYear()}-${uuidv4().slice(0, 8).toUpperCase()}`;
   const payload = {
-    id, email, name,
-    amount: Number(amount || r.amount),
-    type: ticketType || r.ticketType,
+    id,
+    name,
+    email,
+    type: ticketType,
+    amount,
     issuedAt: Date.now(),
-    reference: referenceCode
+    orderId,
+    captureId,
   };
-  const token = signTicketPayload(payload);
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
+
+  const hash = computeHash(email, id, ticketType);
   const ticket = {
-    id, email, name,
-    amount: Number(amount || r.amount),
-    type: ticketType || r.ticketType,
-    method: 'transfer',
+    ...payload,
     status: 'valid',
     jwt: token,
-    createdAt: Date.now(),
+    hash,
   };
 
   tickets.set(id, ticket);
-  try { await sendTicketEmail(email, ticket); } catch (e) { console.error('Email error (ticket):', e.message); }
-  return res.json({ ok: true, ticketId: id });
+  saveTicketRecord(ticket);
+  return ticket;
+}
+
+// ---------- API ----------
+app.get('/api/config', (_req, res) => {
+  res.json({
+    event: { name: EVENT_NAME, date: EVENT_DATE },
+    paypalClientId: PAYPAL_CLIENT_ID || null,
+    currency: 'EUR',
+    emailsEnabled: EMAILS_ENABLED,
+  });
 });
 
-// --------- Scanner / Validation ----------
+app.get('/admin/api/me', (_req, res) => {
+  res.status(204).end();
+});
+
+app.get('/api/smtp-check', (_req, res) => {
+  res.json({
+    emailsEnabled: EMAILS_ENABLED,
+    provider: EMAILS_ENABLED ? 'brevo' : null,
+    from: EMAILS_ENABLED ? FROM_EMAIL : null,
+  });
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    paypal: !!PAYPAL_CLIENT_ID && !!PAYPAL_SECRET,
+    emails: EMAILS_ENABLED,
+  });
+});
+
+app.post('/api/test/generate-ticket', async (req, res) => {
+  if (!TEST_TICKETS_ENABLED) {
+    return res.status(403).json({ error: 'TEST_ENDPOINT_DISABLED' });
+  }
+
+  const name = String(req.body.name || '').trim();
+  const rawEmail = String(req.body.email || '').trim();
+  const ticketTypeRaw = String(req.body.ticketType || 'standard').toLowerCase();
+  const ticketType = ticketTypeRaw === 'vip' ? 'vip' : 'standard';
+
+  if (!name || !rawEmail) {
+    return res.status(400).json({ error: 'CHAMPS_MANQUANTS' });
+  }
+
+  const amount = getTicketPrice(ticketType);
+  if (!amount) {
+    return res.status(400).json({ error: 'TYPE_BILLET_INVALIDE' });
+  }
+
+  try {
+    const ticket = issueTicket({
+      name,
+      email: rawEmail,
+      ticketType,
+      amount,
+      orderId: 'TEST-MANUAL',
+      captureId: null,
+    });
+
+    let emailSent = false;
+    if (EMAILS_ENABLED) {
+      try {
+        await sendTicketEmail(rawEmail, ticket);
+        emailSent = true;
+      } catch (mailErr) {
+        console.error('test ticket email error:', mailErr.message);
+      }
+    }
+
+    res.json({ ok: true, ticketId: ticket.id, emailSent });
+  } catch (err) {
+    console.error('test generate ticket error:', err.message);
+    res.status(500).json({ error: 'TICKET_TEST_FAILED' });
+  }
+});
+
+app.post('/api/paypal/create-order', async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim();
+    const ticketTypeRaw = String(req.body.ticketType || '').trim().toLowerCase();
+    const ticketsInput = req.body.tickets || {};
+
+    if (!name || !email) {
+      return res.status(400).json({ error: 'CHAMPS_MANQUANTS' });
+    }
+
+    const parseQty = (value) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 0;
+      return Math.max(0, Math.floor(n));
+    };
+
+    let standardQty = parseQty(ticketsInput.standard);
+    let vipQty = parseQty(ticketsInput.vip);
+
+    if (standardQty === 0 && vipQty === 0) {
+      standardQty = parseQty(req.body.standardQty);
+      vipQty = parseQty(req.body.vipQty);
+    }
+
+    if (standardQty === 0 && vipQty === 0) {
+      if (ticketTypeRaw === 'vip') vipQty = 1;
+      else standardQty = 1;
+    }
+
+    const totalQty = standardQty + vipQty;
+    if (!totalQty) {
+      return res.status(400).json({ error: 'AUCUN_BILLET' });
+    }
+
+    const amount = standardQty * TICKET_PRICES.standard + vipQty * TICKET_PRICES.vip;
+
+    const accessToken = await getPayPalAccessToken();
+    const payload = {
+      intent: 'CAPTURE',
+      purchase_units: [
+        {
+          reference_id: `AF-${Date.now()}`,
+          amount: {
+            currency_code: 'EUR',
+            value: amount.toFixed(2),
+          },
+          description: `${EVENT_NAME} - Billets (${standardQty} standard, ${vipQty} vip)`,
+        },
+      ],
+    };
+
+    const response = await axios.post(`${PAYPAL_BASE_URL}/v2/checkout/orders`, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const orderId = response.data.id;
+    pendingOrders.set(orderId, {
+      name,
+      email,
+      amount,
+      items: {
+        standard: standardQty,
+        vip: vipQty,
+      },
+      totalQty,
+      ticketType: totalQty === 1 ? (vipQty ? 'vip' : 'standard') : null,
+      createdAt: Date.now(),
+    });
+
+    res.json({ id: orderId });
+  } catch (err) {
+    console.error('create-order error:', err.message);
+    const status = err.response?.status || 500;
+    res.status(status).json({ error: 'PAYPAL_CREATE_FAILED' });
+  }
+});
+
+app.post('/api/paypal/capture-order', async (req, res) => {
+  try {
+    const orderId = String(req.body.orderId || '').trim();
+    if (!orderId) return res.status(400).json({ error: 'ORDERID_MANQUANT' });
+
+    if (completedOrders.has(orderId)) {
+      const previous = completedOrders.get(orderId);
+      return res.json({ ok: true, ...previous });
+    }
+
+    const meta = pendingOrders.get(orderId);
+    if (!meta) return res.status(404).json({ error: 'ORDER_INCONNUE' });
+
+    const accessToken = await getPayPalAccessToken();
+    const captureResp = await axios.post(
+      `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const capture = captureResp.data?.purchase_units?.[0]?.payments?.captures?.[0];
+    if (!capture || capture.status !== 'COMPLETED') {
+      return res.status(400).json({ error: 'PAIEMENT_NON_CAPTURE' });
+    }
+
+    pendingOrders.delete(orderId);
+
+    pendingOrders.delete(orderId);
+
+    const items = meta.items || {
+      standard: meta.ticketType === 'vip' ? 0 : 1,
+      vip: meta.ticketType === 'vip' ? 1 : 0,
+    };
+
+    const ticketsIssued = [];
+    const ticketIds = [];
+
+    const addTickets = (type, qty) => {
+      const unitPrice = TICKET_PRICES[type];
+      if (!unitPrice || qty <= 0) return;
+      for (let i = 0; i < qty; i += 1) {
+        const ticket = issueTicket({
+          name: meta.name,
+          email: meta.email,
+          ticketType: type,
+          amount: unitPrice,
+          orderId,
+          captureId: capture.id,
+        });
+        ticketsIssued.push(ticket);
+        ticketIds.push(ticket.id);
+      }
+    };
+
+    addTickets('standard', Number(items.standard) || 0);
+    addTickets('vip', Number(items.vip) || 0);
+
+    if (!ticketIds.length) {
+      addTickets(meta.ticketType === 'vip' ? 'vip' : 'standard', 1);
+    }
+
+    let emailsSent = 0;
+    if (EMAILS_ENABLED) {
+      for (const ticket of ticketsIssued) {
+        try {
+          await sendTicketEmail(meta.email, ticket);
+          emailsSent += 1;
+        } catch (mailErr) {
+          console.error('ticket email error:', mailErr.message);
+        }
+      }
+    } else {
+      console.warn('Email non envoyé (SMTP inactif)');
+    }
+
+    const payload = {
+      ticketIds,
+      emailsSent,
+      emailSent: EMAILS_ENABLED && emailsSent === ticketsIssued.length,
+    };
+
+    completedOrders.set(orderId, payload);
+
+    res.json({ ok: true, ...payload });
+  } catch (err) {
+    console.error('capture-order error:', err.message);
+    const status = err.response?.status || 500;
+    res.status(status).json({ error: 'PAYPAL_CAPTURE_FAILED' });
+  }
+});
+
 app.post('/api/validate', (req, res) => {
-  const { token } = req.body;
   try {
+    const token = String(req.body.token || '');
+    if (!token) return res.status(400).json({ ok: false, reason: 'TOKEN_MANQUANT' });
+
     const decoded = jwt.verify(token, JWT_SECRET);
-    const t = tickets.get(decoded.id);
-    if (!t) return res.status(404).json({ ok:false, reason:'Ticket not found' });
-    if (t.status === 'used') return res.status(400).json({ ok:false, reason:'Already used' });
+    let ticket = tickets.get(decoded.id);
+    const stored = getTicketRecord(decoded.id);
 
-    t.status = 'used'; tickets.set(t.id, t);
-    return res.json({ ok:true, ticketId:t.id, name:t.name, type:t.type });
-  } catch (e) {
-    return res.status(400).json({ ok:false, reason:'Invalid or expired QR' });
+    if (!stored) {
+      return res.status(404).json({ ok: false, reason: 'BILLET_INCONNU' });
+    }
+
+    const expectedHash = computeHash(stored.email, decoded.id, decoded.type || stored.type);
+    if (stored.hash !== expectedHash) {
+      return res.status(400).json({ ok: false, reason: 'BILLET_HASH_INVALID' });
+    }
+
+    if (!ticket) {
+      ticket = {
+        id: decoded.id,
+        email: stored.email,
+        name: decoded.name || stored.email,
+        type: decoded.type || stored.type,
+        status: stored.status || 'valid',
+      };
+      tickets.set(decoded.id, ticket);
+    }
+
+    if (ticket.status === 'used' || stored.status === 'used') {
+      return res.status(400).json({ ok: false, reason: 'BILLET_DEJA_UTILISE' });
+    }
+
+    ticket.status = 'used';
+    tickets.set(ticket.id, ticket);
+    updateTicketStatus(ticket.id, 'used');
+
+    return res.json({
+      ok: true,
+      ticketId: ticket.id,
+      name: ticket.name,
+      type: ticket.type,
+    });
+  } catch (err) {
+    return res.status(400).json({ ok: false, reason: 'QR_INVALIDE_OU_EXPIRE' });
   }
 });
 
-// --------- Routes de test (GET) ----------
-app.get('/api/test-email-get', async (req, res) => {
-  try {
-    if (!EMAILS_ENABLED) return res.status(400).send('Emails désactivés');
-    const to = req.query.to;
-    if (!to) return res.status(400).send('Paramètre ?to= requis');
-    const html = `<p>✅ Test e-mail via Resend OK.</p><p>${new Date().toISOString()}</p>`;
-    const out = await sendEmailHTML(to, '[AFARIS] Test email (GET)', html);
-    res.send(`OK, messageId=${out?.data?.id || 'sent'}`);
-  } catch (e) {
-    res.status(500).send('Erreur: ' + (e.message || e));
-  }
+// ---------- Static frontend (après API) ----------
+const publicDir = path.join(__dirname, '..', 'public');
+const scannerDir = path.join(__dirname, '..', 'scanner');
+
+app.use('/scanner', express.static(scannerDir));
+app.get('/scanner', (_req, res) => {
+  res.sendFile(path.join(scannerDir, 'scanner.html'));
 });
+app.use('/', express.static(publicDir));
 
-app.get('/api/test-ticket-get', async (req, res) => {
-  try {
-    if (!EMAILS_ENABLED) return res.status(400).send('Emails désactivés');
-    const to = req.query.to;
-    const type = (req.query.type === 'vip') ? 'vip' : 'standard';
-    const name = req.query.name || 'Test AFARIS';
-    if (!to) return res.status(400).send('Paramètre ?to= requis');
-
-    const id = `AFR-TEST-${Date.now()}`;
-    const amount = type === 'vip' ? 40 : 25;
-    const payload = { id, email: to, name, amount, type, issuedAt: Date.now(), source: 'test-get' };
-    const token = signTicketPayload(payload);
-
-    const tpl = fs.readFileSync(path.join(__dirname, 'ticketTemplate.html'), 'utf8');
-    const qr = await QRCode.toDataURL(token);
-    const html = tpl
-      .replace(/{{EVENT_NAME}}/g, EVENT_NAME)
-      .replace(/{{EVENT_DATE}}/g, EVENT_DATE)
-      .replace(/{{NAME}}/g, name)
-      .replace(/{{TICKET_ID}}/g, id)
-      .replace(/{{TICKET_TYPE}}/g, type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
-      .replace(/{{QR_DATA_URL}}/g, qr);
-
-    await sendEmailHTML(to, `[${EVENT_NAME}] Votre billet – ${id}`, html);
-    res.send(`OK, billet envoyé à ${to} (id=${id})`);
-  } catch (e) {
-    res.status(500).send('Erreur: ' + (e.message || e));
-  }
-});
-
-// --------- Start ----------
-app.listen(PORT, () => {
-  console.log(`🚀 AFARIS backend on ${PORT} (Resend emails=${EMAILS_ENABLED})`);
+// ---------- Start ----------
+app.listen(PORT, HOST, () => {
+  console.log(
+    `🚀 AFARIS backend sur ${HOST}:${PORT} (PayPal=${PAYPAL_CLIENT_ID ? 'on' : 'off'} | SMTP=${
+      EMAILS_ENABLED ? 'on' : 'off'
+    })`
+  );
 });

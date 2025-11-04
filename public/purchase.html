@@ -2,404 +2,445 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AFARIS — Paiement</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Achat billet – AFARIS</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/assets/logo_afaris.png" type="image/png" />
+
+  <!-- Styles spécifiques -->
   <style>
-    :root{
-      --bg:#0b0f16;
-      --panel:#121826;
-      --panel-2:#0f1522;
-      --card:#ffffff;
-      --text:#0b1220;
-      --muted:#6b7280;
-      --brand:#f53d77;
-      --brand-600:#e2346b;
-      --ok:#16a34a;
-      --warn:#f59e0b;
-      --border:#e5e7eb;
-      --shadow:0 10px 30px rgba(0,0,0,.08);
-      --shadow-soft:0 6px 20px rgba(0,0,0,.06);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      background:linear-gradient(120deg,#0b0f16 0%,#0a0f1b 60%,#0b1322 100%);
-      color:#fff;
-    }
-    a{color:inherit;text-decoration:none}
-    .wrap{
-      max-width:1100px;
-      margin:40px auto 80px;
-      padding:0 24px;
-    }
-    header{
-      display:flex;align-items:center;gap:16px;margin-bottom:24px;
-    }
-    header .logo{
-      width:36px;height:36px;border-radius:8px;display:grid;place-items:center;
-      background:#fff;color:#111;font-weight:700;box-shadow:var(--shadow-soft);
-    }
-    header h1{font-size:22px;margin:0;font-weight:700;letter-spacing:.2px}
-    .grid{
-      display:grid;grid-template-columns: 1fr 380px; gap:24px;
-    }
-    @media (max-width:980px){
-      .grid{grid-template-columns:1fr}
+    .purchase-wrap{padding:3rem 3rem 4rem}
+    .page-title{font-size:2.2rem;margin-bottom:1.8rem}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:2rem}
+    .card{background:#161722;border-radius:1rem;padding:1.4rem 1.6rem;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    .card h3{margin-bottom:1rem}
+    .form-row{display:flex;gap:1rem}
+    .form-group{flex:1;display:flex;flex-direction:column;margin-bottom:1rem}
+    .form-group label{font-size:.95rem;margin-bottom:.35rem;color:#bdbdbd}
+    .input{background:#0f101b;border:1px solid #26283a;border-radius:.6rem;padding:.75rem 1rem;color:#fff;outline:none;transition:border .15s, box-shadow .15s}
+    .input:focus{border-color:#ff2674; box-shadow:0 0 0 3px rgba(255,38,116,.15)}
+    .input.err{border-color:#ff4d6d}
+    .hint{font-size:.85rem;color:#98a0b3;margin-top:.35rem}
+    .error{font-size:.85rem;color:#ff879b;margin-top:.35rem;display:none}
+    .error.show{display:block}
+    .btn-row{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:.6rem}
+    .btn.full{width:100%;justify-content:center}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    .quantity-block{display:flex;flex-direction:column;gap:14px;margin:10px 0 18px}
+    .quantity-row{display:flex;justify-content:space-between;align-items:center;gap:18px}
+    .quantity-row .title{font-weight:600;color:#e2e8f0}
+    .quantity-row .subtitle{color:#98a0b3;font-size:.85rem;margin-top:4px}
+    .qty-control{display:flex;align-items:center;gap:10px;background:#0f101b;border:1px solid #2a2f45;border-radius:999px;padding:6px}
+    .qty-btn{width:34px;height:34px;border-radius:50%;border:0;background:#1f2235;color:#fff;font-size:18px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
+    .qty-btn:hover{background:#ff2674}
+    .qty-btn:disabled{opacity:.45;cursor:not-allowed}
+    .qty-value{width:52px;text-align:center;border:0;background:transparent;color:#fff;font-size:1rem;font-weight:600}
+    .summary ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.55rem}
+    .summary li{display:flex;justify-content:space-between;gap:1rem;color:#ddd}
+    .summary .total{margin-top:.7rem;border-top:1px solid #2a2c3e;padding-top:.7rem;font-weight:700}
+    .badge-note{display:inline-block;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);padding:.35rem .6rem;border-radius:.5rem;color:#bdbdbd;font-size:.85rem}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}.purchase-wrap{padding:2rem 1.25rem}}
+
+    @media (max-width:640px){
+      header.navbar{flex-direction:column;gap:0.8rem;padding:1.2rem 1rem;align-items:flex-start}
+      header.navbar nav{display:flex;flex-wrap:wrap;gap:0.6rem;width:100%}
+      header.navbar nav a{margin:0;padding:0.45rem 0.85rem;border-radius:999px;background:rgba(16,17,28,0.4)}
+      .purchase-wrap{padding:2rem 1rem}
+      .page-title{font-size:1.8rem;text-align:center}
+      .card{padding:1.1rem 1.2rem}
+      .form-row{flex-direction:column}
+      .quantity-row{flex-direction:column;align-items:flex-start;gap:10px}
+      .qty-control{width:100%;justify-content:space-between}
+      .btn-row{flex-direction:column}
+      .btn-row .btn{width:100%;justify-content:center}
+      .summary{margin-top:1.6rem}
+      .paypal-slot{min-height:140px}
     }
 
-    /* Cards */
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      box-shadow:var(--shadow);
-      color:var(--text);
-    }
-    .card .head{
-      padding:18px 20px;border-bottom:1px solid var(--border);
-      font-weight:600;display:flex;align-items:center;gap:12px;
-    }
-    .card .body{padding:18px 20px}
-    .muted{color:var(--muted)}
-    .hint{font-size:12px;color:var(--muted)}
+    /* Toast (succès/erreur léger) */
+    .toast{position:fixed;right:20px;bottom:20px;min-width:260px;max-width:360px;background:#0f101b;border:1px solid #283048;color:#fff;border-radius:.8rem;padding:.9rem 1rem;box-shadow:0 10px 26px rgba(0,0,0,.35);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s, transform .2s;z-index:9999}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.success{border-color:#2d6a4f}
+    .toast.error{border-color:#8a1c2b}
+    .toast h4{margin:0 0 .25rem 0;font-size:1rem}
+    .toast p{margin:0;color:#c9d0de;font-size:.92rem}
 
-    /* Inputs */
-    .field{margin-bottom:16px}
-    .label{display:block;font-size:13px;margin-bottom:6px;color:#334155;font-weight:600}
-    .input{
-      width:100%;padding:12px 12px;border:1px solid var(--border);
-      border-radius:10px;background:#fff;color:#111;outline:none;
-      box-shadow:0 1px 0 rgba(0,0,0,.02)
-    }
-    .input:focus{border-color:#cbd5e1;box-shadow:0 0 0 4px rgba(245,61,119,.12)}
-    .error{margin-top:6px;color:#b91c1c;font-size:12px;display:none}
-    .field.invalid .input{border-color:#ef4444;background:#fff5f5}
-    .field.invalid .error{display:block}
-
-    /* Payment list */
-    .paylist{display:flex;flex-direction:column;gap:12px;margin:6px 0}
-    .payitem{
-      border:1px solid var(--border);border-radius:12px;background:#fff;
-      padding:14px;display:flex;gap:14px;align-items:flex-start;
-      transition:all .15s ease; cursor:pointer;
-    }
-    .payitem:hover{box-shadow:var(--shadow-soft)}
-    .payitem input{margin-top:4px}
-    .payitem .content{flex:1}
-    .payitem .title{font-weight:600;color:#111;margin-bottom:2px}
-    .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-    .badge{
-      height:22px;border-radius:6px;background:#f3f4f6;border:1px solid #e5e7eb;
-      padding:3px 8px;font-size:12px;display:inline-flex;align-items:center;gap:6px;
-    }
-    .brand-visa{width:26px;height:16px;background:#1a73e8;border-radius:3px}
-    .brand-mc{width:26px;height:16px;background: radial-gradient(circle at 35% 50%, #ea001b 0 60%, transparent 60%), radial-gradient(circle at 65% 50%, #ff9900 0 60%, transparent 60%);}
-    .brand-bc{width:26px;height:16px;background:#0050ff;border-radius:3px}
-    .brand-pp{width:26px;height:16px;background:#003087;border-radius:3px}
-
-    /* Collapses */
-    .collapse{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb}
-    .payitem.active{border-color:#d1d5db;background:#fafafa}
-    .payitem.active + .collapse{display:block}
-
-    /* Buttons */
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{
-      appearance:none;border:0;border-radius:12px;padding:12px 16px;font-weight:700;
-      background:var(--brand);color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(245,61,119,.25);
-      transition:transform .06s ease, filter .2s ease;
-    }
-    .btn:hover{filter:brightness(.98)}
-    .btn:active{transform:translateY(1px)}
-    .btn.outline{
-      background:#fff;color:#111;border:1px solid var(--border);box-shadow:none;
-    }
-    .btn.block{width:100%}
-    .btn.muted{background:#111827;color:#fff;border:1px solid #1f2937}
-
-    /* Summary */
-    .summary .line{
-      display:flex;justify-content:space-between;margin:10px 0;color:#374151
-    }
-    .summary .total{
-      display:flex;justify-content:space-between;align-items:center;
-      padding-top:12px;margin-top:12px;border-top:1px solid var(--border);
-      font-size:18px;font-weight:800;color:#111;
-    }
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;border-radius:999px;
-      border:1px solid var(--border);padding:6px 10px;background:#fff
-    }
-    .tag{font-size:12px;color:#16a34a;background:#e7f8ed;border:1px solid #b7e8c7;border-radius:999px;padding:2px 8px}
-
-    .footnote{margin-top:14px;color:#64748b;font-size:12px}
+    .paypal-slot{margin-top:1.2rem;border:1px dashed #2a2f45;border-radius:.8rem;padding:1rem;min-height:120px;display:flex;align-items:center;justify-content:center;background:#0f101b}
+    .status-box{margin-top:1rem;padding:.9rem 1rem;border-radius:.7rem;background:#10111c;border:1px solid #25273a;color:#c9d0de;font-size:.9rem;line-height:1.5}
+    .status-box.error{border-color:#8a1c2b;color:#ff879b;background:#1b1013}
+    .status-box.success{border-color:#2d6a4f;color:#9ae6b4;background:#101c16}
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <header>
-      <div class="logo">AF</div>
-      <h1>AFARIS — Paiement</h1>
-    </header>
+  <!-- Header identique à l’accueil -->
+  <header class="navbar">
+    <div class="logo">
+      <img src="/assets/logo_afaris.png" alt="AFARIS" />
+      <span>AFARIS</span>
+    </div>
+    <nav>
+      <a href="/#tickets">Billets</a>
+      <a href="/#infos">Infos</a>
+      <a href="/scanner/scanner.html">Scanner</a>
+      <a id="adminLink" class="btn small ghost" href="/admin/login.html">Connexion</a>
+      <div id="google_translate_element" aria-label="Sélecteur de langue"></div>
+    </nav>
+  </header>
+
+  <main class="purchase-wrap">
+    <h1 class="page-title">Acheter un billet</h1>
 
     <div class="grid">
-      <!-- Col gauche -->
-      <div class="col-left">
-        <!-- Infos client -->
-        <div class="card">
-          <div class="head">Vos informations</div>
-          <div class="body">
-            <div class="row" style="gap:16px">
-              <div class="field" style="flex:1">
-                <label class="label" for="name">Nom et prénom</label>
-                <input id="name" class="input" placeholder="Votre nom complet" />
-                <div class="error">Merci d’indiquer votre nom.</div>
-              </div>
-              <div class="field" style="flex:1">
-                <label class="label" for="email">E-mail</label>
-                <input id="email" class="input" placeholder="vous@email.com" />
-                <div class="error">Merci d’indiquer un e-mail valide.</div>
-              </div>
-            </div>
-            <div class="field">
-              <span class="label">Type de billet</span>
-              <div class="row">
-                <label class="pill">
-                  <input type="radio" name="ticket" value="standard" checked>
-                  Standard — 25€ <span class="hint" style="margin-left:6px">Billet standard</span>
-                </label>
-                <label class="pill">
-                  <input type="radio" name="ticket" value="vip">
-                  VIP — 40€ <span class="tag">Plat & boisson compris</span>
-                </label>
-              </div>
-            </div>
+      <!-- Colonne gauche : formulaire -->
+      <section class="card" aria-labelledby="infos-title">
+        <h3 id="infos-title">Vos informations</h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name">Nom et prénom</label>
+            <input id="name" class="input" type="text" placeholder="Votre nom complet" autocomplete="name" />
+            <div id="err-name" class="error">Veuillez renseigner votre nom et prénom.</div>
+          </div>
+          <div class="form-group">
+            <label for="email">E-mail</label>
+            <input id="email" class="input" type="email" placeholder="vous@email.com" autocomplete="email" />
+            <div id="err-email" class="error">Adresse e-mail invalide.</div>
           </div>
         </div>
 
-        <!-- Paiement -->
-        <div class="card" style="margin-top:18px">
-          <div class="head">Mode de paiement</div>
-          <div class="body">
-
-            <!-- Carte bancaire -->
-            <label class="payitem" data-method="card">
-              <input type="radio" name="method" value="card" checked>
-              <div class="content">
-                <div class="title">Carte bancaire</div>
-                <div class="muted">Visa, Mastercard</div>
-                <div class="badges">
-                  <span class="badge"><span class="brand-visa"></span>VISA</span>
-                  <span class="badge"><span class="brand-mc"></span>Mastercard</span>
-                </div>
+        <div class="form-group">
+          <label>Quantité par type</label>
+          <div class="quantity-block" aria-live="polite">
+            <div class="quantity-row">
+              <div>
+                <div class="title">Entrée Standard — 30€</div>
+                <div class="subtitle">Accès à la soirée • Billet nominatif</div>
               </div>
-            </label>
-            <div class="collapse">
-              <div class="row">
-                <button id="payCard" class="btn">Payer par carte</button>
-                <button id="payCardAlt" class="btn outline">Utiliser une autre carte</button>
+              <div class="qty-control" data-type="standard">
+                <button class="qty-btn" type="button" data-qty-btn data-type="standard" data-dir="-1" aria-label="Diminuer les billets standard">−</button>
+                <input id="qtyStandard" class="qty-value" type="number" value="1" min="0" readonly aria-live="off" aria-label="Quantité billets standard" />
+                <button class="qty-btn" type="button" data-qty-btn data-type="standard" data-dir="1" aria-label="Augmenter les billets standard">+</button>
               </div>
-              <div class="footnote">Saisie sécurisée sur la page de paiement.</div>
             </div>
-
-            <!-- Bancontact -->
-            <label class="payitem" data-method="bancontact">
-              <input type="radio" name="method" value="bancontact">
-              <div class="content">
-                <div class="title">Bancontact</div>
-                <div class="badges"><span class="badge"><span class="brand-bc"></span>Bancontact</span></div>
+            <div class="quantity-row">
+              <div>
+                <div class="title">Entrée VIP — 45€</div>
+                <div class="subtitle">Table réservée • Plat compris • Service personnalisé</div>
               </div>
-            </label>
-            <div class="collapse">
-              <button id="payBC" class="btn">Payer par Bancontact</button>
+              <div class="qty-control" data-type="vip">
+                <button class="qty-btn" type="button" data-qty-btn data-type="vip" data-dir="-1" aria-label="Diminuer les billets VIP">−</button>
+                <input id="qtyVip" class="qty-value" type="number" value="0" min="0" readonly aria-live="off" aria-label="Quantité billets VIP" />
+                <button class="qty-btn" type="button" data-qty-btn data-type="vip" data-dir="1" aria-label="Augmenter les billets VIP">+</button>
+              </div>
             </div>
-
-            <!-- PayPal -->
-            <label class="payitem" data-method="paypal">
-              <input type="radio" name="method" value="paypal">
-              <div class="content">
-                <div class="title">PayPal</div>
-                <div class="badges"><span class="badge"><span class="brand-pp"></span>PayPal</span></div>
-              </div>
-            </label>
-            <div class="collapse">
-              <button id="payPP" class="btn">Payer avec PayPal</button>
-            </div>
-
-            <!-- Virement (option) -->
-            <details style="margin-top:14px">
-              <summary class="muted" style="cursor:pointer">Autre : virement bancaire</summary>
-              <div class="row" style="margin-top:10px">
-                <button id="payWire" class="btn muted">Réserver et payer par virement</button>
-              </div>
-              <div class="footnote">
-                Vous recevrez immédiatement un e-mail avec la référence et l’IBAN.
-                Le billet est envoyé après réception du paiement.
-              </div>
-            </details>
-
           </div>
+          <p class="hint">Ajoutez plusieurs billets si nécessaire, chaque ticket sera envoyé séparément par e-mail.</p>
         </div>
-      </div>
 
-      <!-- Col droite : récap -->
-      <aside class="card summary">
-        <div class="head">Récapitulatif</div>
-        <div class="body">
-          <div class="line"><span>Événement</span><b>Soirée AFARIS – Arido</b></div>
-          <div class="line"><span>Date</span><span id="sumDate">27/12/2025</span></div>
-          <div class="line"><span>Heure</span><span>19:00 • Show 20:00</span></div>
-          <div class="line"><span>Lieu</span><span>Quai de l’Industrie 121<br>1080 Molenbeek-Saint-Jean</span></div>
-          <div class="line"><span>Billet</span><span id="sumType">Standard</span></div>
-          <div class="total"><span>Total</span><span id="sumTotal">25,00 €</span></div>
-          <div class="footnote">Un e-mail de confirmation avec QR code unique vous sera envoyé après paiement.</div>
-        </div>
+        <div class="badge-note" aria-live="polite">Paiement sécurisé via PayPal (compte ou carte bancaire).</div>
+        <div id="paypal-buttons" class="paypal-slot" aria-busy="true" aria-live="polite"></div>
+        <div id="status" class="status-box">Remplissez vos informations puis finalisez votre achat.</div>
+      </section>
+
+      <!-- Colonne droite : récapitulatif -->
+      <aside class="card summary" aria-labelledby="recap-title">
+        <h3 id="recap-title">Récapitulatif</h3>
+        <ul>
+          <li><span>Événement</span><span>Soirée AFARIS – Arido</span></li>
+          <li><span>Date</span><span>27/12/2025</span></li>
+          <li><span>Heure</span><span>19:00 • Show 20:00</span></li>
+          <li><span>Lieu</span><span>Quai de l'Industrie 121<br/>1080 Molenbeek-Saint-Jean</span></li>
+          <li id="recapStandard"><span>Standard</span><span id="recapStandardValue">1 × 30,00 €</span></li>
+          <li id="recapVip"><span>VIP</span><span id="recapVipValue">0 × 45,00 €</span></li>
+          <li class="total"><span>Total</span><span id="sumTotal">30,00 €</span></li>
+        </ul>
+        <p class="hint" style="margin-top:.8rem">Chaque billet est nominatif : vous recevrez un e-mail distinct par ticket avec son QR code.</p>
       </aside>
     </div>
+  </main>
+
+  <footer>
+    <p>© 2025 AFARIS – Une génération qui construit</p>
+  </footer>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <h4 id="toast-title"></h4>
+    <p id="toast-msg"></p>
   </div>
 
+  <!-- Script Connexion ↔ Déconnexion -->
   <script>
-    // ------- Helpers -------
-    const qs = sel => document.querySelector(sel);
-    const qsa = sel => [...document.querySelectorAll(sel)];
-    const format = (n) => new Intl.NumberFormat('fr-BE', { style:'currency', currency:'EUR' }).format(n);
+    (function(){
+      const link=document.getElementById('adminLink');
+      fetch('/admin/api/me',{credentials:'include'})
+        .then(r=>r.ok?r.json():null).then(d=>{
+          if(!d) return;
+          if(d.ok||d.user||d.authenticated){link.textContent='Déconnexion (Admin)';link.href='/admin/logout';}
+        }).catch(()=>{});
+    })();
+  </script>
 
-    // ------- UI state -------
-    const nameEl  = qs('#name');
-    const emailEl = qs('#email');
+  <!-- Logique de la page -->
+  <script>
+    const ticketPrices = { standard: 30, vip: 45 };
 
-    // collapses
-    const payItems = qsa('.payitem');
-    function refreshCollapses(){
-      const sel = qs('input[name="method"]:checked')?.value || 'card';
-      payItems.forEach(item=>{
-        item.classList.toggle('active', item.dataset.method===sel);
-      });
+    const toast = (title, msg, type = 'success') => {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-title').textContent = title;
+      document.getElementById('toast-msg').textContent = msg;
+      t.className = 'toast ' + type;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    };
+
+    const nameEl = document.getElementById('name');
+    const emailEl = document.getElementById('email');
+    const errName = document.getElementById('err-name');
+    const errEmail = document.getElementById('err-email');
+    const statusBox = document.getElementById('status');
+    const paypalContainer = document.getElementById('paypal-buttons');
+    const sumTotalEl = document.getElementById('sumTotal');
+    const qtyInputs = {
+      standard: document.getElementById('qtyStandard'),
+      vip: document.getElementById('qtyVip'),
+    };
+    const summaryValues = {
+      standard: document.getElementById('recapStandardValue'),
+      vip: document.getElementById('recapVipValue'),
+    };
+    const qtyButtons = document.querySelectorAll('[data-qty-btn]');
+
+    const qty = { standard: 1, vip: 0 };
+
+    const formatCurrency = (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+
+    function setStatus(message, state = 'info') {
+      if (!statusBox) return;
+      statusBox.textContent = message;
+      statusBox.className = 'status-box';
+      statusBox.dataset.state = state;
+      if (state === 'error') statusBox.classList.add('error');
+      if (state === 'success') statusBox.classList.add('success');
     }
-    payItems.forEach(item=>{
-      item.addEventListener('click', ()=>{
-        const r = item.querySelector('input[type="radio"]');
-        r.checked = true;
-        refreshCollapses();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const validateField = (el, errEl, testFn) => {
+      const ok = testFn(el.value.trim());
+      el.classList.toggle('err', !ok);
+      errEl.classList.toggle('show', !ok);
+      return ok;
+    };
+    const validateName = () => validateField(nameEl, errName, (v) => v.length >= 2);
+    const validateEmail = () => validateField(emailEl, errEmail, (v) => emailRegex.test(v));
+
+    nameEl.addEventListener('input', validateName);
+    emailEl.addEventListener('input', validateEmail);
+
+    const totalTickets = () => qty.standard + qty.vip;
+    const totalAmount = () => qty.standard * ticketPrices.standard + qty.vip * ticketPrices.vip;
+
+    function updateQuantities() {
+      qtyInputs.standard.value = qty.standard;
+      qtyInputs.vip.value = qty.vip;
+
+      summaryValues.standard.textContent = qty.standard
+        ? `${qty.standard} × ${formatCurrency(ticketPrices.standard)}`
+        : '0 billet';
+      summaryValues.vip.textContent = qty.vip
+        ? `${qty.vip} × ${formatCurrency(ticketPrices.vip)}`
+        : '0 billet';
+
+      sumTotalEl.textContent = formatCurrency(totalAmount());
+
+      qtyButtons.forEach((btn) => {
+        const type = btn.dataset.type;
+        const dir = Number(btn.dataset.dir) || 0;
+        if (!type || !Number.isFinite(dir)) return;
+        if (dir < 0) {
+          btn.disabled = qty[type] === 0;
+        } else {
+          btn.disabled = false;
+        }
+      });
+
+      if (totalTickets() === 0 && statusBox?.dataset.state !== 'success') {
+        setStatus('Sélectionnez au moins un billet avant le paiement.', 'error');
+      } else if (
+        totalTickets() > 0 &&
+        statusBox?.dataset.state === 'error' &&
+        statusBox.textContent.includes('Sélectionnez au moins un billet')
+      ) {
+        setStatus('Remplissez vos informations puis finalisez votre achat.');
+      }
+    }
+
+    qtyButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.type;
+        const dir = Number(btn.dataset.dir) || 0;
+        if (!type || !Number.isFinite(dir)) return;
+        if (dir < 0 && qty[type] === 0) return;
+        qty[type] = Math.max(0, qty[type] + dir);
+        updateQuantities();
       });
     });
-    refreshCollapses();
 
-    // ticket selection
-    const ticketRadios = qsa('input[name="ticket"]');
-    function currentTicket(){
-      const v = qs('input[name="ticket"]:checked')?.value || 'standard';
-      const amount = v==='vip' ? 40 : 25;
-      return { type:v, amount };
-    }
-    function updateSummary(){
-      const { type, amount } = currentTicket();
-      qs('#sumType').textContent = (type==='vip') ? 'VIP — Plat & boisson compris' : 'Standard';
-      qs('#sumTotal').textContent = format(amount);
-      qs('#sumDate').textContent = '27/12/2025';
-    }
-    ticketRadios.forEach(r=>r.addEventListener('change', updateSummary));
-    updateSummary();
-
-    // Prefill from ?type=
-    const urlType = new URLSearchParams(location.search).get('type');
-    if (urlType && (urlType==='vip' || urlType==='standard')) {
-      qs(`input[name="ticket"][value="${urlType}"]`).checked = true;
-      updateSummary();
+    const preset = (new URLSearchParams(location.search).get('type') || '').toLowerCase();
+    if (preset === 'vip') {
+      qty.standard = 0;
+      qty.vip = 1;
     }
 
-    // ------- Validation -------
-    function isEmail(x){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); }
-    function validate(){
-      let ok = true;
-      if (!nameEl.value.trim()){
-        nameEl.closest('.field').classList.add('invalid'); ok=false;
-      } else { nameEl.closest('.field').classList.remove('invalid'); }
-      if (!isEmail(emailEl.value.trim())){
-        emailEl.closest('.field').classList.add('invalid'); ok=false;
-      } else { emailEl.closest('.field').classList.remove('invalid'); }
-      return ok;
-    }
-    [nameEl,emailEl].forEach(el=>el.addEventListener('input', validate));
+    setStatus('Remplissez vos informations puis finalisez votre achat.');
+    updateQuantities();
 
-    // ------- API helpers -------
-    async function postJSON(url, data){
-      const res = await fetch(url, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(data)
+    const canSubmit = () => {
+      const okName = validateName();
+      const okEmail = validateEmail();
+      const hasTickets = totalTickets() > 0;
+      if (!hasTickets) {
+        setStatus('Sélectionnez au moins un billet avant le paiement.', 'error');
+      }
+      return okName && okEmail && hasTickets;
+    };
+
+    const formPayload = () => ({
+      name: nameEl.value.trim(),
+      email: emailEl.value.trim(),
+      tickets: { ...qty },
+    });
+
+    async function createPaypalOrder() {
+      if (!canSubmit()) {
+        toast('Champs requis', 'Complétez vos informations et choisissez au moins un billet.', 'error');
+        throw new Error('FORM_INVALID');
+      }
+      const payload = formPayload();
+      setStatus('Connexion à PayPal…', 'info');
+
+      const res = await fetch('/api/paypal/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error((await res.text()) || 'HTTP '+res.status);
+      if (!res.ok) {
+        const text = await res.text();
+        setStatus('PayPal est momentanément indisponible. Réessayez dans un instant.', 'error');
+        toast('PayPal indisponible', text || 'Le service PayPal est momentanément indisponible.', 'error');
+        throw new Error(text || 'PAYPAL_CREATE_FAILED');
+      }
+      const data = await res.json();
+      return data.id;
+    }
+
+    async function capturePaypalOrder(orderId) {
+      const res = await fetch('/api/paypal/capture-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        setStatus('La confirmation PayPal a échoué. Vérifiez votre paiement.', 'error');
+        toast('Confirmation PayPal', text || 'La capture du paiement a échoué.', 'error');
+        throw new Error(text || 'PAYPAL_CAPTURE_FAILED');
+      }
       return res.json();
     }
 
-    async function flowCard(kind){
-      if (!validate()) return;
-      const { type, amount } = currentTicket();
-      const name  = nameEl.value.trim();
-      const email = emailEl.value.trim();
+    function renderPaypalButtons() {
+      if (!window.paypal) {
+        setStatus('Impossible de charger PayPal. Actualisez la page.', 'error');
+        toast('Erreur PayPal', 'Le SDK PayPal n’a pas pu être chargé.', 'error');
+        return;
+      }
+      window.paypal.Buttons({
+        style: { shape: 'pill', color: 'gold', layout: 'vertical', label: 'pay' },
+        createOrder: () => createPaypalOrder(),
+        onApprove: async (data) => {
+          try {
+            setStatus('Validation de votre paiement…', 'info');
+            const result = await capturePaypalOrder(data.orderID);
+            const ticketIds = Array.isArray(result?.ticketIds)
+              ? result.ticketIds
+              : result?.ticketIds
+              ? [result.ticketIds]
+              : [];
+            const ticketsCount = ticketIds.length;
+            const idsMsg = ticketsCount ? `Billet${ticketsCount > 1 ? 's' : ''} : ${ticketIds.join(', ')}.` : '';
+            const emailsSent = Number(result?.emailsSent ?? (result?.emailSent ? ticketsCount : 0));
+            const emailMsg = emailsSent
+              ? `${emailsSent} e-mail${emailsSent > 1 ? 's' : ''} envoyé${emailsSent > 1 ? 's' : ''}.`
+              : result?.emailSent
+              ? 'E-mails envoyés.'
+              : 'Envoi e-mail indisponible, contactez-nous si besoin.';
 
-      // 1) créer l'order (simulateur back)
-      const order = await postJSON('/api/create-order', {
-        name, email, ticketType: type, amount, method:'card'
-      });
-
-      // 2) “capturer” (simulateur back) -> émet le billet + e-mail
-      const capture = await postJSON('/api/paypal/capture', {
-        orderId: order.orderId,
-        name, email, amount, ticketType: type
-      });
-
-      // 3) redirect success
-      location.href = `/success.html?ticket=${encodeURIComponent(capture.ticketId)}`;
+            const statusMessage = `Merci ! ${ticketsCount} billet${ticketsCount > 1 ? 's' : ''} prêt${ticketsCount > 1 ? 's' : ''}. ${idsMsg} ${emailMsg}`.trim();
+            setStatus(statusMessage, 'success');
+            toast('Paiement confirmé', emailMsg, 'success');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 4200);
+          } catch (err) {
+            console.error(err);
+          }
+        },
+        onCancel: () => {
+          setStatus('Paiement annulé. Vous pouvez reprendre à tout moment.', 'info');
+        },
+        onError: (err) => {
+          console.error(err);
+          setStatus('Une erreur PayPal est survenue. Merci de réessayer.', 'error');
+          toast('Erreur PayPal', 'Merci de réessayer dans un instant.', 'error');
+        },
+      }).render('#paypal-buttons');
+      paypalContainer?.setAttribute('aria-busy', 'false');
     }
 
-    async function flowPayPal(){
-      // même flow que carte côté serveur (seul le “branding” diffère visuellement)
-      return flowCard('paypal');
-    }
-    async function flowBancontact(){
-      return flowCard('bancontact');
-    }
-
-    async function flowWire(){
-      if (!validate()) return;
-      const { type, amount } = currentTicket();
-      const name  = nameEl.value.trim();
-      const email = emailEl.value.trim();
-
-      const o = await postJSON('/api/create-order', {
-        name, email, ticketType: type, amount, method:'transfer'
-      });
-      // petite confirmation douce
-      const msg = [
-        'Votre réservation est enregistrée ✅',
-        '',
-        `Référence : ${o.referenceCode}`,
-        `IBAN : ${o.iban || '—'}`,
-        `BIC  : ${o.bic  || '—'}`,
-        '',
-        'Vous avez aussi reçu ces infos par e-mail.'
-      ].join('\n');
-      alert(msg);
-      location.href='/';
+    async function boot() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) throw new Error('CONFIG');
+        const config = await res.json();
+        if (!config.paypalClientId) {
+          setStatus('Configuration PayPal manquante côté serveur.', 'error');
+          toast('Configuration PayPal', 'Client ID PayPal absent.', 'error');
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+          config.paypalClientId
+        )}&currency=EUR&intent=capture&enable-funding=card`;
+        script.async = true;
+        script.onload = renderPaypalButtons;
+        script.onerror = () => {
+          setStatus('Le SDK PayPal n’a pas pu être chargé.', 'error');
+          toast('Erreur PayPal', 'Impossible de charger le SDK.', 'error');
+        };
+        document.head.appendChild(script);
+      } catch (err) {
+        console.error(err);
+        setStatus('Impossible de joindre le serveur. Vérifiez qu’il est démarré.', 'error');
+        toast('Serveur indisponible', 'Impossible de récupérer la configuration.', 'error');
+      }
     }
 
-    // ------- Bind buttons -------
-    qs('#payCard').addEventListener('click', flowCard);
-    qs('#payCardAlt').addEventListener('click', flowCard);
-    qs('#payPP').addEventListener('click', flowPayPal);
-    qs('#payBC').addEventListener('click', flowBancontact);
-    qs('#payWire').addEventListener('click', flowWire);
-
-    // sélection par radio (clavier)
-    qsa('input[name="method"]').forEach(r=>{
-      r.addEventListener('change', refreshCollapses);
-    });
+    boot();
   </script>
+
+  <!-- Google Translate -->
+  <script>
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'fr',
+        includedLanguages: 'fr,en,nl,ar,so,aa',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

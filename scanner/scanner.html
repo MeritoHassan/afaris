@@ -1,23 +1,151 @@
 
 <!doctype html>
 <html lang="fr">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AFARIS – Scanner</title>
-<style>body{font-family:Arial;background:#0b0f1a;color:#e9eef8;margin:0}header{padding:12px;text-align:center;background:#111827}main{display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}video,canvas{width:100%;max-width:420px;border-radius:12px}.status{padding:10px 12px;border-radius:8px;background:#111827}.ok{background:#14532d}.bad{background:#7f1d1d}</style>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AFARIS – Scanner</title>
+  <style>
+    body{font-family:Inter,Arial;background:#0d0f1a;color:#e9eef8;margin:0}
+    header{padding:14px;background:#111827;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    main{display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}
+    video,canvas{width:100%;max-width:420px;border-radius:12px}
+    .status{padding:10px 12px;border-radius:8px;background:#111827;text-align:center;min-height:48px;display:flex;align-items:center;justify-content:center}
+    .status.ok{background:#14532d}
+    .status.bad{background:#7f1d1d}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    .btn{padding:10px 18px;border-radius:999px;border:1px solid #ff2674;background:#ff2674;color:#fff;font-weight:600;cursor:pointer}
+    .btn.secondary{background:transparent;border-color:#2a2f45;color:#e9eef8}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    #google_translate_element{background:rgba(255,255,255,0.08);border-radius:999px;padding:4px 12px}
+    #google_translate_element .goog-te-gadget{font-size:12px;color:#e9eef8}
+    #google_translate_element .goog-te-gadget-simple{background:transparent;border:none}
+    #google_translate_element select{background:transparent;border:none;color:#e9eef8;cursor:pointer}
+  </style>
 </head>
 <body>
-<header><h2>AFARIS – Contrôle des billets</h2></header>
+<header>
+  <h2 style="margin:0">AFARIS – Contrôle des billets</h2>
+  <div id="google_translate_element" aria-label="Sélecteur de langue"></div>
+</header>
 <main>
-  <video id="video" autoplay playsinline></video>
+  <video id="video" playsinline hidden></video>
   <canvas id="canvas" hidden></canvas>
-  <div id="msg" class="status">Prêt à scanner…</div>
+  <div class="actions">
+    <button id="startBtn" class="btn">Démarrer la caméra</button>
+    <button id="stopBtn" class="btn secondary" hidden>Arrêter</button>
+  </div>
+  <div id="msg" class="status" role="status" aria-live="polite">Cliquez sur “Démarrer la caméra”.</div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
 const API = '/api/validate';
-const video=document.getElementById('video');const canvas=document.getElementById('canvas');const ctx=canvas.getContext('2d');const msg=document.getElementById('msg');
-async function start(){const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});video.srcObject=stream;requestAnimationFrame(tick);}
-async function tick(){if(video.readyState===video.HAVE_ENOUGH_DATA){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0,canvas.width,canvas.height);const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);const code=jsQR(imageData.data,canvas.width,canvas.height);if(code&&code.data){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code.data})});const d=await r.json();if(d.ok){msg.textContent=`✅ Valide: ${d.ticketId} – ${d.name} (${d.type})`;msg.className='status ok';}else{msg.textContent=`❌ Refusé: ${d.reason||'Invalide'}`;msg.className='status bad';}}catch(e){msg.textContent='Erreur réseau';msg.className='status bad';}await new Promise(r=>setTimeout(r,1200));}}requestAnimationFrame(tick);}start();
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const msg = document.getElementById('msg');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+let stream = null;
+let scanning = false;
+
+function setStatus(text, type){
+  msg.textContent = text;
+  msg.className = 'status';
+  if(type === 'ok') msg.classList.add('ok');
+  if(type === 'bad') msg.classList.add('bad');
+}
+
+function stopStream(){
+  scanning = false;
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream = null;
+  }
+  video.hidden = true;
+  stopBtn.hidden = true;
+  startBtn.disabled = false;
+}
+
+async function start(){
+  if(!navigator.mediaDevices?.getUserMedia){
+    setStatus('Caméra non supportée sur cet appareil.', 'bad');
+    startBtn.disabled = true;
+    return;
+  }
+  try{
+    startBtn.disabled = true;
+    setStatus('Initialisation de la caméra…');
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+    video.srcObject = stream;
+    await video.play();
+    video.hidden = false;
+    stopBtn.hidden = false;
+    setStatus('Scanner actif. Visez un QR code de billet.');
+    scanning = true;
+    requestAnimationFrame(tick);
+  }catch(err){
+    console.error(err);
+    setStatus('Caméra inaccessible. Autorisez l’accès ou réessayez.', 'bad');
+    startBtn.disabled = false;
+  }
+}
+
+async function tick(){
+  if(!scanning) return;
+  if(video.readyState === video.HAVE_ENOUGH_DATA){
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if(code?.data){
+      scanning = false;
+      await validateTicket(code.data);
+      setTimeout(()=>{ scanning = true; requestAnimationFrame(tick); }, 1200);
+      return;
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+async function validateTicket(token){
+  try{
+    const response = await fetch(API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token })
+    });
+    const data = await response.json();
+    if(data.ok){
+      setStatus(`✅ Billet valide : ${data.ticketId} – ${data.name} (${data.type})`, 'ok');
+    }else{
+      setStatus(`❌ Refusé : ${data.reason || 'Billet invalide'}`, 'bad');
+    }
+  }catch(err){
+    console.error(err);
+    setStatus('Erreur réseau durant la validation.', 'bad');
+  }
+}
+
+startBtn.addEventListener('click', start);
+stopBtn.addEventListener('click', ()=>{
+  stopStream();
+  setStatus('Caméra stoppée. Cliquez pour reprendre.');
+});
+
+window.addEventListener('beforeunload', stopStream);
 </script>
+<script>
+  function googleTranslateElementInit() {
+    new google.translate.TranslateElement({
+      pageLanguage: 'fr',
+      includedLanguages: 'fr,en,nl,ar,so,aa',
+      layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+      autoDisplay: false
+    }, 'google_translate_element');
+  }
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

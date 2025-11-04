@@ -1,64 +1,210 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AFARIS – Soirée 27 Décembre 2025</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soirée Arido – AFARIS</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/assets/logo_afaris.png" type="image/png" />
+  <!-- Styles légers du modal audio -->
+  <style>
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:9998}
+    .modal{width:min(720px,94vw);background:#0f101b;border:1px solid #2b3042;border-radius:1rem;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1rem;background:#151727;border-bottom:1px solid #2b3042}
+    .modal-header h3{margin:0;font-size:1rem}
+    .modal-body{padding:1rem 1.25rem}
+    .audio-wrap{display:flex;align-items:center;gap:1rem;background:#0c0e18;border:1px solid #2a2f45;border-radius:.8rem;padding:1rem}
+    .audio-meta{flex:1;min-width:0}
+    .audio-title{font-weight:700;margin-bottom:.25rem}
+    .audio-sub{color:#9aa3b5;font-size:.92rem}
+    .time{font-variant-numeric:tabular-nums;color:#c7cfdb}
+    .modal-actions{display:flex;justify-content:flex-end;gap:.6rem;padding:.8rem 1rem;background:#0f101b;border-top:1px solid #2b3042}
+  </style>
 </head>
+
 <body>
-<header class="nav">
-  <div class="wrap">
-    <div class="brand">
-      <img src="assets/logo_afaris.png" class="logo" alt="AFARIS">
+  <header class="navbar">
+    <div class="logo">
+      <img src="/assets/logo_afaris.png" alt="AFARIS" />
       <span>AFARIS</span>
     </div>
     <nav>
-      <a href="#info">Infos</a>
-      <a class="btn" href="purchase.html">Acheter</a>
+      <a href="#tickets">Billets</a>
+      <a href="#infos">Infos</a>
+      <a href="/scanner/scanner.html">Scanner</a>
+      <a id="adminLink" class="btn small ghost" href="/admin/login.html">Connexion</a>
+      <div id="google_translate_element" aria-label="Sélecteur de langue"></div>
     </nav>
-  </div>
-</header>
+  </header>
 
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      <h1><span class="accent">Arido</span> en Live — Soirée AFARIS</h1>
-      <p>Réservez maintenant. Billet envoyé par e‑mail avec QR code unique.</p>
-      <a class="btn primary" href="purchase.html">Acheter mon billet</a>
-      <div class="chips">
-        <span>Carte & Virement</span><span>QR unique anti‑fraude</span><span>Scanner à l’entrée</span>
+  <main class="hero">
+    <div class="hero-content">
+      <h1><span class="highlight">Arido</span> en Live – Soirée AFARIS</h1>
+      <p>Une nuit à ne pas manquer. Achetez vos billets maintenant et recevez un QR code unique par e-mail.</p>
+      <div class="hero-buttons">
+        <a href="#tickets" class="btn primary">Acheter mon billet</a>
+        <button id="openTeaser" class="btn ghost" type="button">Écouter le teaser</button>
+      </div>
+      <div class="tags">
+        <span>Paiement PayPal (carte ou compte)</span>
+        <span>QR code unique anti-fraude</span>
+        <span>Scanner à l’entrée</span>
       </div>
     </div>
-    <div>
-      <img src="assets/artist_arido.png" class="artist" alt="Arido">
-    </div>
-  </div>
-</section>
 
-<section id="info" class="info">
-  <div class="wrap grid">
-    <div>
-      <h2>Infos pratiques</h2>
-      <ul>
-        <li><b>Date :</b> 27 Décembre 2025</li>
-        <li><b>Lieu :</b> Quai de l'Industrie 121, 1080 Molenbeek-Saint-Jean</li>
-        <li><b>Ouverture :</b> 19:00 • Show 20:00</li>
-      </ul>
+    <div class="hero-image">
+      <img src="/assets/artist_arido.png" alt="Arido"
+           onerror="this.onerror=null; this.src='/assets/logo_afaris.png';" />
+      <div class="event-info">
+        <span>Décembre 2025</span>
+        <span>Bruxelles</span>
+        <span>19:00</span>
+        <a href="#tickets" class="btn small primary">Réserver</a>
+      </div>
     </div>
-    <div class="card">
-      <h3>Billetterie sécurisée</h3>
-      <p>Billets envoyés par e‑mail (QR code signé). Validation en temps réel et désactivation au premier scan.</p>
-    </div>
-  </div>
-</section>
+  </main>
 
-<footer>
-  <div class="wrap foot">
-    <span>© 2025 AFARIS</span>
-    <a href="../scanner/scanner.html">Scanner ↗</a>
+  <section id="tickets" class="tickets-section">
+    <h2>Choisissez votre billet</h2>
+
+    <div class="tickets-grid">
+      <div class="ticket-card">
+        <h3>Entrée Standard</h3>
+        <p class="price">30€</p>
+        <p>Accès à la soirée<br><small>Billet nominatif</small></p>
+        <a href="/purchase.html?type=standard" class="btn ghost">Acheter</a>
+      </div>
+
+      <div class="ticket-card popular">
+        <div class="badge">Le + populaire</div>
+        <h3>Entrée VIP</h3>
+        <p class="price">45€</p>
+        <p>Table réservée<br><small>Plat compris & service personnalisé</small></p>
+        <a href="/purchase.html?type=vip" class="btn primary">Acheter</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="infos" class="infos-section">
+    <h2>Infos pratiques</h2>
+    <ul>
+      <li><b>Date :</b> 27 Décembre 2025</li>
+      <li><b>Heure :</b> 19:00 • Show à 20:00</li>
+      <li><b>Lieu :</b> Quai de l’Industrie 121, 1080 Molenbeek-Saint-Jean</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>© 2025 AFARIS – Une génération qui construit</p>
+  </footer>
+
+  <!-- Modal audio -->
+  <div id="teaserBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teaserTitle">
+      <div class="modal-header">
+        <h3 id="teaserTitle">Teaser audio — Soirée AFARIS</h3>
+        <button id="closeTeaser" class="btn small ghost" type="button">Fermer</button>
+      </div>
+      <div class="modal-body">
+        <div class="audio-wrap">
+          <button id="togglePlay" class="btn primary" type="button">▶︎ Lecture</button>
+          <div class="audio-meta">
+            <div class="audio-title">Arido – Mix teaser</div>
+            <div class="audio-sub">
+              <span id="cur" class="time">00:00</span> / <span id="dur" class="time">--:--</span>
+            </div>
+          </div>
+          <audio id="audio" preload="metadata">
+            <!-- IMPORTANT : chemin absolu vers public/assets/… avec la bonne casse -->
+            <source src="/assets/ARIDO_AFARIS_TEASER_MIX_2MIN.mp3" type="audio/mpeg" />
+            Votre navigateur ne supporte pas l’audio HTML5.
+          </audio>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="rewind" class="btn ghost" type="button">⟲ -10s</button>
+        <button id="forward" class="btn ghost" type="button">+10s ⟳</button>
+        <button id="mute" class="btn ghost" type="button">🔈 Muet</button>
+      </div>
+    </div>
   </div>
-</footer>
+
+
+  <!-- Script Connexion ↔ Déconnexion (ignore 401) -->
+  <script>
+    (function(){
+      const link=document.getElementById('adminLink');
+      fetch('/admin/api/me',{credentials:'include'})
+        .then(r=>r.ok?r.json():null)
+        .then(d=>{ if(d && (d.ok||d.user||d.authenticated)){ link.textContent='Déconnexion (Admin)'; link.href='/admin/logout'; }})
+        .catch(()=>{});
+    })();
+  </script>
+
+  <!-- Script modal audio -->
+  <script>
+    (function(){
+      const backdrop = document.getElementById('teaserBackdrop');
+      const btnOpen  = document.getElementById('openTeaser');
+      const btnClose = document.getElementById('closeTeaser');
+      const btnToggle= document.getElementById('togglePlay');
+      const btnFwd   = document.getElementById('forward');
+      const btnRew   = document.getElementById('rewind');
+      const btnMute  = document.getElementById('mute');
+      const curEl    = document.getElementById('cur');
+      const durEl    = document.getElementById('dur');
+      const audio    = document.getElementById('audio');
+
+      function fmt(t){ if(!isFinite(t)) return '--:--'; const m=Math.floor(t/60), s=Math.floor(t%60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+
+      function openModal(){
+        backdrop.style.display = 'flex';
+        backdrop.setAttribute('aria-hidden','false');
+        audio.play().catch(()=>{ /* autoplay peut être bloqué */ });
+        btnClose.focus();
+        document.addEventListener('keydown', onEsc);
+      }
+      function closeModal(){
+        backdrop.style.display = 'none';
+        backdrop.setAttribute('aria-hidden','true');
+        audio.pause();
+        document.removeEventListener('keydown', onEsc);
+      }
+      function onEsc(e){ if(e.key === 'Escape') closeModal(); }
+
+      // MàJ temps
+      audio.addEventListener('loadedmetadata', ()=> durEl.textContent = fmt(audio.duration));
+      audio.addEventListener('timeupdate', ()=> {
+        curEl.textContent = fmt(audio.currentTime);
+        btnToggle.textContent = audio.paused ? '▶︎ Lecture' : '⏸︎ Pause';
+      });
+
+      // Boutons
+      if (btnOpen)  btnOpen.addEventListener('click', openModal);
+      btnClose.addEventListener('click', closeModal);
+      backdrop.addEventListener('click', (e)=>{
+        const dialog = e.target.closest('.modal');
+        if (!dialog) closeModal();
+      });
+      btnToggle.addEventListener('click', ()=> audio.paused ? audio.play() : audio.pause());
+      btnFwd.addEventListener('click', ()=> audio.currentTime = Math.min((audio.currentTime||0)+10, audio.duration||audio.currentTime+10));
+      btnRew.addEventListener('click', ()=> audio.currentTime = Math.max((audio.currentTime||0)-10, 0));
+      btnMute.addEventListener('click', ()=> { audio.muted = !audio.muted; btnMute.textContent = audio.muted ? '🔇 Non muet' : '🔈 Muet'; });
+    })();
+  </script>
+
+  <!-- Google Translate -->
+  <script>
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'fr',
+        includedLanguages: 'fr,en,nl,ar,so,aa',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 </body>
 </html>
