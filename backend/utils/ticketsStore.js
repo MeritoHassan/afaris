@@ -28,9 +28,12 @@ function writeStore(data) {
 }
 
 function computeHash(email, ticketId, ticketType) {
+  if (!email || !ticketId || !ticketType) {
+    return null;
+  }
   return crypto
     .createHash('sha256')
-    .update(`${email.toLowerCase()}|${ticketId}|${ticketType}`)
+    .update(`${String(email).toLowerCase()}|${ticketId}|${ticketType}`)
     .digest('hex');
 }
 

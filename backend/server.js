@@ -4,7 +4,6 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
@@ -59,10 +58,7 @@ const {
   PAYPAL_SECRET,
 
   FROM_EMAIL,
-  SMTP_HOST,
-  SMTP_PORT = 587,
-  SMTP_USER,
-  SMTP_PASS,
+  BREVO_API_KEY,
   ENABLE_TEST_TICKETS = 'true',
 } = process.env;
 
@@ -81,53 +77,62 @@ const tickets = new Map(); // billets émis
 const pendingOrders = new Map(); // commandes PayPal en attente de capture
 const completedOrders = new Map(); // commande PayPal -> tickets émis (idempotence)
 
-// ---------- Email (Brevo via SMTP) ----------
-let EMAILS_ENABLED = false;
-let transporter = null;
+// ---------- Email (Brevo via API) ----------
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const EMAILS_ENABLED = Boolean(FROM_EMAIL && BREVO_API_KEY);
 
-(async function initMailer() {
-  // on ne force pas l'arrêt si SMTP indisponible : la vente peut continuer
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !FROM_EMAIL) {
-    console.warn('📭 SMTP incomplet → e-mails désactivés');
-    return;
-  }
+if (!EMAILS_ENABLED) {
+  console.warn('📭 BREVO_API_KEY ou FROM_EMAIL manquant → e-mails désactivés');
+}
 
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 587,
-    secure: Number(SMTP_PORT) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
-  });
+async function sendEmailHTML(to, subject, html, attachments = []) {
+  if (!EMAILS_ENABLED) throw new Error('EMAIL_DISABLED');
 
   try {
-    await transporter.verify();
-    EMAILS_ENABLED = true;
-    console.log('📬 SMTP Brevo opérationnel');
+    const payload = {
+      sender: {
+        email: FROM_EMAIL,
+        name: EVENT_NAME,
+      },
+      to: [
+        {
+          email: to,
+        },
+      ],
+      replyTo: ORGANIZER_EMAIL ? { email: ORGANIZER_EMAIL } : undefined,
+      subject,
+      htmlContent: html,
+    };
+
+    if (attachments.length) {
+      payload.attachment = attachments.map((att) => ({
+        name: att.name,
+        content: att.content,
+        type: att.contentType || 'application/octet-stream',
+      }));
+    }
+
+    await axios.post(BREVO_API_URL, payload, {
+      headers: {
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      timeout: 20000,
+    });
   } catch (err) {
-    console.error('❌ Vérification SMTP échouée :', err.message);
+    const message = err.response?.data || err.message || err;
+    console.error('❌ Envoi e-mail Brevo échoué :', message);
+    throw new Error('EMAIL_DISABLED');
   }
-})();
-
-async function sendEmailHTML(to, subject, html) {
-  if (!EMAILS_ENABLED || !transporter) throw new Error('EMAIL_DISABLED');
-
-  return transporter.sendMail({
-    from: FROM_EMAIL,
-    to,
-    replyTo: ORGANIZER_EMAIL,
-    subject,
-    html,
-  });
 }
 
 async function sendTicketEmail(to, ticket) {
   const templatePath = path.join(__dirname, 'ticketTemplate.html');
   const htmlTpl = fs.readFileSync(templatePath, 'utf8');
   const qrPngBuffer = await QRCode.toBuffer(ticket.jwt, { width: 300, margin: 1 });
-  const qrCid = `qr_${ticket.id}@afaris`;
+  const qrBase64 = qrPngBuffer.toString('base64');
+  const qrDataUrl = `data:image/png;base64,${qrBase64}`;
 
   const html = htmlTpl
     .replace(/{{EVENT_NAME}}/g, EVENT_NAME)
@@ -135,25 +140,20 @@ async function sendTicketEmail(to, ticket) {
     .replace(/{{NAME}}/g, ticket.name)
     .replace(/{{TICKET_ID}}/g, ticket.id)
     .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
-    .replace(/{{QR_DATA_URL}}/g, `cid:${qrCid}`);
+    .replace(/{{QR_DATA_URL}}/g, qrDataUrl);
 
-  if (!EMAILS_ENABLED || !transporter) throw new Error('EMAIL_DISABLED');
-
-  return transporter.sendMail({
-    from: FROM_EMAIL,
+  return sendEmailHTML(
     to,
-    replyTo: ORGANIZER_EMAIL,
-    subject: `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
+    `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
     html,
-    attachments: [
+    [
       {
-        filename: `ticket-${ticket.id}.png`,
-        content: qrPngBuffer,
+        name: `ticket-${ticket.id}.png`,
+        content: qrBase64,
         contentType: 'image/png',
-        cid: qrCid,
       },
-    ],
-  });
+    ]
+  );
 }
 
 // ---------- PayPal helpers ----------
@@ -486,7 +486,7 @@ app.post('/api/validate', (req, res) => {
     }
 
     const expectedHash = computeHash(stored.email, decoded.id, decoded.type || stored.type);
-    if (stored.hash !== expectedHash) {
+    if (!expectedHash || stored.hash !== expectedHash) {
       return res.status(400).json({ ok: false, reason: 'BILLET_HASH_INVALID' });
     }
 

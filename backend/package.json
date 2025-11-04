@@ -13,7 +13,6 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.9.16",
     "path": "^0.12.7",
     "qrcode": "^1.5.4",
     "uuid": "^9.0.1"

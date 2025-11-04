@@ -23,7 +23,7 @@
 - Garder les vues en français, avec textes explicites et attributs ARIA pour les composants interactifs; les styles restent structurés (layout → modules → responsive).
 
 ## Testing Guidelines
-- Parcours complet : configurer `PAYPAL_CLIENT_ID`/`PAYPAL_SECRET` sandbox + `SMTP_*`, démarrer le serveur puis réaliser un achat via `http://localhost:4000/purchase.html`. Contrôler l’e-mail reçu et scanner le QR généré.
+- Parcours complet : configurer `PAYPAL_CLIENT_ID`/`PAYPAL_SECRET` sandbox + `BREVO_API_KEY`/`FROM_EMAIL`, démarrer le serveur puis réaliser un achat via `http://localhost:4000/purchase.html`. Contrôler l’e-mail reçu et scanner le QR généré.
 - API : tester la création d’ordre via
   ```bash
   curl -X POST http://localhost:4000/api/paypal/create-order \
@@ -35,11 +35,10 @@
 - Pour une commande multi-billets, confirmer que la réponse `/api/paypal/capture-order` retourne bien la liste des `ticketIds`, que `backend/data/tickets.json` contient chaque hash, et que chaque e-mail individuel est reçu (un QR code par message).
 ## Commit & Pull Request Guidelines
 - Commits impératifs et ciblés (`Implement Brevo mailer`). Rassembler backend + frontend dans la même PR pour chaque fonctionnalité.
-- Dans la description : objectif, variables d’environnement à ajouter/mettre à jour (`PAYPAL_*`, `SMTP_*`, `CORS_ALLOWED_ORIGINS`, `FROM_EMAIL`), scénario de test manuel, captures responsives si l’UI évolue.
+- Dans la description : objectif, variables d’environnement à ajouter/mettre à jour (`PAYPAL_*`, `BREVO_API_KEY`, `FROM_EMAIL`, `CORS_ALLOWED_ORIGINS`, `ENABLE_TEST_TICKETS`), scénario de test manuel, captures responsives si l’UI évolue.
 - Relier les tickets clients (Trello/Notion) pour garder la traçabilité.
 
 ## Security & Configuration Tips
-- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://afaris-tickets.onrender.com`.
-- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_EMAIL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://afaris-tickets.onrender.com`, `ENABLE_TEST_TICKETS=false` sur l’environnement de production.
+- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `BREVO_API_KEY`, `FROM_EMAIL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://afaris-tickets.onrender.com`, `ENABLE_TEST_TICKETS=false` sur l’environnement de production.
 - Ajouter d’autres origines séparées par des virgules si un domaine d’administration ou une préprod est prévu.
 - Le QR reste signé côté serveur : tester régulièrement l’endpoint `/api/validate` depuis `scanner/scanner.html` et surveiller les journaux de validation lors des évènements.
