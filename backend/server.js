@@ -24,6 +24,7 @@ const {
   EVENT_DATE = '2025-12-27',
   ORGANIZER_EMAIL = 'billets@afaris.com',
 
+  // (option PayPal simulée)
   PAYPAL_ENV = 'sandbox',
   PAYPAL_CLIENT_ID,
   PAYPAL_SECRET,
@@ -36,10 +37,10 @@ const {
   // E-mail provider (Resend)
   MAIL_PROVIDER = 'RESEND',
   RESEND_API_KEY,
-  FROM_EMAIL,
+  FROM_EMAIL, // DOIT être validée dans Resend
 } = process.env;
 
-// --------- Stores en mémoire ----------
+// --------- Stores mémoire ----------
 const tickets = new Map();       // billets émis
 const reservations = new Map();  // réservations virement
 
@@ -48,7 +49,7 @@ let EMAILS_ENABLED = false;
 let resend = null;
 
 (function initMail() {
-  if (MAIL_PROVIDER.toUpperCase() !== 'RESEND') {
+  if ((MAIL_PROVIDER || '').toUpperCase() !== 'RESEND') {
     console.warn('📭 MAIL_PROVIDER ≠ RESEND → e-mails désactivés');
     EMAILS_ENABLED = false;
     return;
@@ -63,8 +64,7 @@ let resend = null;
   console.log('📬 Using Resend provider (no SMTP). Email system ready.');
 })();
 
-app.get('/api/smtp-check', (req, res) => {
-  // pour compat : expose l’état email
+app.get('/api/smtp-check', (_req, res) => {
   res.json({
     emailsEnabled: EMAILS_ENABLED,
     provider: EMAILS_ENABLED ? 'resend' : null,
@@ -78,16 +78,15 @@ function signTicketPayload(payload) {
 }
 
 async function sendEmailHTML(to, subject, html) {
-  if (!EMAILS_ENABLED || !resend) {
-    throw new Error('EMAIL_DISABLED');
-  }
-  const result = await resend.emails.send({
-    from: FROM_EMAIL,        // doit être validée chez Resend
+  if (!EMAILS_ENABLED || !resend) throw new Error('EMAIL_DISABLED');
+  const resp = await resend.emails.send({
+    from: FROM_EMAIL, // adresse validée chez Resend
     to,
     subject,
     html,
   });
-  return result;
+  if (resp?.error) throw new Error(resp.error.message || 'Resend error');
+  return resp;
 }
 
 async function sendTicketEmail(to, ticket) {
@@ -96,7 +95,6 @@ async function sendTicketEmail(to, ticket) {
   const templatePath = path.join(__dirname, 'ticketTemplate.html');
   const htmlTpl = fs.readFileSync(templatePath, 'utf8');
 
-  // QR en DataURL
   const qrDataUrl = await QRCode.toDataURL(ticket.jwt);
 
   const html = htmlTpl
@@ -107,11 +105,7 @@ async function sendTicketEmail(to, ticket) {
     .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
     .replace(/{{QR_DATA_URL}}/g, qrDataUrl);
 
-  await sendEmailHTML(
-    to,
-    `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
-    html
-  );
+  await sendEmailHTML(to, `[${EVENT_NAME}] Votre billet – ${ticket.id}`, html);
 }
 
 async function sendTransferReservationEmail(to, reservation) {
@@ -129,37 +123,11 @@ async function sendTransferReservationEmail(to, reservation) {
     .replace(/{{IBAN}}/g, IBAN || '—')
     .replace(/{{BIC}}/g, BIC || '—');
 
-  await sendEmailHTML(
-    to,
-    `[${EVENT_NAME}] Réservation en attente de virement (${reservation.referenceCode})`,
-    html
-  );
-}
-
-// --------- (Optionnel) PayPal helpers si tu veux les vrais appels ----------
-async function getPayPalAccessToken() {
-  const url = PAYPAL_ENV === 'live'
-    ? 'https://api-m.paypal.com/v1/oauth2/token'
-    : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
-  const res = await axios({
-    url, method: 'post',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    auth: { username: PAYPAL_CLIENT_ID, password: PAYPAL_SECRET },
-    data: 'grant_type=client_credentials',
-  });
-  return res.data.access_token;
-}
-async function capturePayPalOrder(orderId) {
-  const base = PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
-  const token = await getPayPalAccessToken();
-  const res = await axios.post(`${base}/v2/checkout/orders/${orderId}/capture`, {}, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-  });
-  return res.data;
+  await sendEmailHTML(to, `[${EVENT_NAME}] Réservation en attente de virement (${reservation.referenceCode})`, html);
 }
 
 // --------- Health ----------
-app.get('/api/health', (req, res) =>
+app.get('/api/health', (_req, res) =>
   res.json({ ok: true, time: new Date().toISOString(), email: EMAILS_ENABLED ? 'resend' : 'off' })
 );
 
@@ -188,7 +156,7 @@ app.post('/api/create-order', async (req, res) => {
   }
 
   if (method === 'card') {
-    // MVP : simuler une order PayPal (si tu veux la vraie intégration, appelle l’API)
+    // MVP : simuler une order PayPal (si tu veux la vraie intégration, appelle l’API PayPal)
     const orderId = uuidv4();
     return res.json({ ok: true, method, orderId });
   }
@@ -204,7 +172,6 @@ app.post('/api/paypal/capture', async (req, res) => {
   }
 
   try {
-    // Pour vrai PayPal: const capture = await capturePayPalOrder(orderId)...
     const id = `AFR-${Date.now()}-${Math.floor(Math.random()*1000)}`;
     const payload = { id, email, name, amount:Number(amount), type: ticketType, issuedAt: Date.now(), source: 'paypal' };
     const token = signTicketPayload(payload);
@@ -268,16 +235,15 @@ app.post('/api/validate', (req, res) => {
   }
 });
 
-// --------- Routes de test (pratique) ----------
+// --------- Routes de test (GET) ----------
 app.get('/api/test-email-get', async (req, res) => {
   try {
     if (!EMAILS_ENABLED) return res.status(400).send('Emails désactivés');
     const to = req.query.to;
     if (!to) return res.status(400).send('Paramètre ?to= requis');
-
     const html = `<p>✅ Test e-mail via Resend OK.</p><p>${new Date().toISOString()}</p>`;
-    const result = await sendEmailHTML(to, '[AFARIS] Test email (GET)', html);
-    res.send(`OK, messageId=${result?.data?.id || 'sent'}`);
+    const out = await sendEmailHTML(to, '[AFARIS] Test email (GET)', html);
+    res.send(`OK, messageId=${out?.data?.id || 'sent'}`);
   } catch (e) {
     res.status(500).send('Erreur: ' + (e.message || e));
   }
@@ -286,7 +252,6 @@ app.get('/api/test-email-get', async (req, res) => {
 app.get('/api/test-ticket-get', async (req, res) => {
   try {
     if (!EMAILS_ENABLED) return res.status(400).send('Emails désactivés');
-
     const to = req.query.to;
     const type = (req.query.type === 'vip') ? 'vip' : 'standard';
     const name = req.query.name || 'Test AFARIS';
