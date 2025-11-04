@@ -5,6 +5,8 @@
 - `backend/data/` conserve les tickets émis dans un JSON (`tickets.json`) avec hash + statut pour validation offline (fichier ignoré par Git).
 - `public/` contient les pages statiques : `index.html`, `purchase.html` (SDK PayPal injecté dynamiquement) et la feuille `styles.css`.
 - Le sélecteur de langue Google Translate est intégré dans `index.html` et `purchase.html`; adaptez-le si vous changez la navigation.
+- `backend/.env.congig` ne contient plus de secrets : remplacez les valeurs `__REMPLIR_AVANT_DEPLOIEMENT__` avant de créer votre `.env` local ou vos variables Render.
+- `public/admin/login.html` est un placeholder affichant les instructions de contact tant que l’authentification n’est pas implémentée.
 - `emails/` regroupe les modèles HTML utilisés par Brevo – modifier uniquement les valeurs entre `{{...}}`.
 - `scanner/` fournit `scanner.html`, pensé pour les contrôles mobiles hors caisse.
 

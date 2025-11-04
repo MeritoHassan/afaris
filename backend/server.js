@@ -97,6 +97,9 @@ let transporter = null;
     port: Number(SMTP_PORT) || 587,
     secure: Number(SMTP_PORT) === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
 
   try {
