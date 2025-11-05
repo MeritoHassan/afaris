@@ -68,6 +68,13 @@ async function saveTicketRecord(ticket) {
     status: ticket.status || 'valid',
   };
 
+  console.log('[ticketsStore] save', ticket.id, {
+    supabaseEnabled,
+    email: ticket.email,
+    type: ticket.type,
+    hash: ticket.hash,
+  });
+
   if (supabaseEnabled) {
     const { error } = await supabase.from('tickets').upsert({
       id: ticket.id,
@@ -95,6 +102,10 @@ async function getTicketRecord(ticketId) {
     if (error && error.code !== 'PGRST116') {
       console.error('Supabase get ticket échoué :', error.message);
     }
+    console.log('[ticketsStore] get', ticketId, {
+      supabaseEnabled,
+      data,
+    });
     return data || null;
   }
 
