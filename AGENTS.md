@@ -3,6 +3,7 @@
 ## Project Structure & Module Organization
 - `backend/` héberge l’API Express (PayPal, billets, e-mails) et sert le frontend. Stocker toutes les variables dans `backend/.env` (non versionné).
 - `backend/data/` conserve les tickets émis dans un JSON (`tickets.json`) avec hash + statut pour validation offline (fichier ignoré par Git).
+- En production, le stockage des billets s’appuie sur Firestore (`firebase-admin`). Si aucune clé n’est fournie, le fallback JSON est utilisé.
 - `public/` contient les pages statiques : `index.html`, `purchase.html` (SDK PayPal injecté dynamiquement) et la feuille `styles.css`.
 - Le sélecteur de langue Google Translate est intégré dans `index.html` et `purchase.html`; adaptez-le si vous changez la navigation.
 - `backend/.env.congig` ne contient plus de secrets : remplacez les valeurs `__REMPLIR_AVANT_DEPLOIEMENT__` avant de créer votre `.env` local ou vos variables Render.
@@ -23,7 +24,7 @@
 - Garder les vues en français, avec textes explicites et attributs ARIA pour les composants interactifs; les styles restent structurés (layout → modules → responsive).
 
 ## Testing Guidelines
-- Parcours complet : configurer `PAYPAL_CLIENT_ID`/`PAYPAL_SECRET` sandbox + `BREVO_API_KEY`/`FROM_EMAIL`, démarrer le serveur puis réaliser un achat via `http://localhost:4000/purchase.html`. Contrôler l’e-mail reçu et scanner le QR généré.
+- Parcours complet : configurer `PAYPAL_CLIENT_ID`/`PAYPAL_SECRET` sandbox + `BREVO_API_KEY`/`FROM_EMAIL` + credentials Firebase (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`), démarrer le serveur puis réaliser un achat via `http://localhost:4000/purchase.html`. Contrôler l’e-mail reçu et scanner le QR généré.
 - API : tester la création d’ordre via
   ```bash
   curl -X POST http://localhost:4000/api/paypal/create-order \
@@ -35,10 +36,11 @@
 - Pour une commande multi-billets, confirmer que la réponse `/api/paypal/capture-order` retourne bien la liste des `ticketIds`, que `backend/data/tickets.json` contient chaque hash, et que chaque e-mail individuel est reçu (un QR code par message).
 ## Commit & Pull Request Guidelines
 - Commits impératifs et ciblés (`Implement Brevo mailer`). Rassembler backend + frontend dans la même PR pour chaque fonctionnalité.
-- Dans la description : objectif, variables d’environnement à ajouter/mettre à jour (`PAYPAL_*`, `BREVO_API_KEY`, `FROM_EMAIL`, `CORS_ALLOWED_ORIGINS`, `ENABLE_TEST_TICKETS`), scénario de test manuel, captures responsives si l’UI évolue.
+- Dans la description : objectif, variables d’environnement à ajouter/mettre à jour (`PAYPAL_*`, `BREVO_API_KEY`, `FROM_EMAIL`, `FIREBASE_*`, `CORS_ALLOWED_ORIGINS`, `ENABLE_TEST_TICKETS`), scénario de test manuel, captures responsives si l’UI évolue.
 - Relier les tickets clients (Trello/Notion) pour garder la traçabilité.
 
 ## Security & Configuration Tips
-- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `BREVO_API_KEY`, `FROM_EMAIL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://afaris-tickets.onrender.com`, `ENABLE_TEST_TICKETS=false` sur l’environnement de production.
+- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `BREVO_API_KEY`, `FROM_EMAIL`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://afaris-tickets.onrender.com`, `ENABLE_TEST_TICKETS=false` sur l’environnement de production.
+- Si Firestore n’est pas configuré, le fallback JSON local reste actif mais n’est pas partagé entre environnements.
 - Ajouter d’autres origines séparées par des virgules si un domaine d’administration ou une préprod est prévu.
 - Le QR reste signé côté serveur : tester régulièrement l’endpoint `/api/validate` depuis `scanner/scanner.html` et surveiller les journaux de validation lors des évènements.

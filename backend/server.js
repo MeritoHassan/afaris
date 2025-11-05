@@ -13,9 +13,14 @@ const {
   getTicketRecord,
   computeHash,
   updateTicketStatus,
+  FIREBASE_ENABLED,
 } = require('./utils/ticketsStore');
 
 const app = express();
+
+if (!FIREBASE_ENABLED) {
+  console.warn('⚠️ Firestore non configuré → stockage des tickets en mode fallback local');
+}
 
 // ---------- CORS configuration ----------
 const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
@@ -453,7 +458,7 @@ app.post('/api/paypal/capture-order', async (req, res) => {
         }
       }
     } else {
-      console.warn('Email non envoyé (SMTP inactif)');
+      console.warn('Email non envoyé (Brevo API inactif)');
     }
 
     const payload = {
@@ -533,7 +538,7 @@ app.use('/', express.static(publicDir));
 // ---------- Start ----------
 app.listen(PORT, HOST, () => {
   console.log(
-    `🚀 AFARIS backend sur ${HOST}:${PORT} (PayPal=${PAYPAL_CLIENT_ID ? 'on' : 'off'} | SMTP=${
+    `🚀 AFARIS backend sur ${HOST}:${PORT} (PayPal=${PAYPAL_CLIENT_ID ? 'on' : 'off'} | Emails=${
       EMAILS_ENABLED ? 'on' : 'off'
     })`
   );
