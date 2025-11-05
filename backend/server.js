@@ -196,7 +196,7 @@ function getTicketPrice(type) {
   return TICKET_PRICES[type] ?? null;
 }
 
-function issueTicket({ name, email, ticketType, amount, orderId, captureId }) {
+async function issueTicket({ name, email, ticketType, amount, orderId, captureId }) {
   const id = `AFR-${new Date().getFullYear()}-${uuidv4().slice(0, 8).toUpperCase()}`;
   const payload = {
     id,
@@ -219,7 +219,7 @@ function issueTicket({ name, email, ticketType, amount, orderId, captureId }) {
   };
 
   tickets.set(id, ticket);
-  saveTicketRecord(ticket);
+  await saveTicketRecord(ticket);
   return ticket;
 }
 
@@ -274,7 +274,7 @@ app.post('/api/test/generate-ticket', async (req, res) => {
   }
 
   try {
-    const ticket = issueTicket({
+    const ticket = await issueTicket({
       name,
       email: rawEmail,
       ticketType,
@@ -423,11 +423,11 @@ app.post('/api/paypal/capture-order', async (req, res) => {
     const ticketsIssued = [];
     const ticketIds = [];
 
-    const addTickets = (type, qty) => {
+    const addTickets = async (type, qty) => {
       const unitPrice = TICKET_PRICES[type];
       if (!unitPrice || qty <= 0) return;
       for (let i = 0; i < qty; i += 1) {
-        const ticket = issueTicket({
+        const ticket = await issueTicket({
           name: meta.name,
           email: meta.email,
           ticketType: type,
@@ -440,11 +440,11 @@ app.post('/api/paypal/capture-order', async (req, res) => {
       }
     };
 
-    addTickets('standard', Number(items.standard) || 0);
-    addTickets('vip', Number(items.vip) || 0);
+    await addTickets('standard', Number(items.standard) || 0);
+    await addTickets('vip', Number(items.vip) || 0);
 
     if (!ticketIds.length) {
-      addTickets(meta.ticketType === 'vip' ? 'vip' : 'standard', 1);
+      await addTickets(meta.ticketType === 'vip' ? 'vip' : 'standard', 1);
     }
 
     let emailsSent = 0;
@@ -485,6 +485,9 @@ app.post('/api/validate', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     let ticket = tickets.get(decoded.id);
     const stored = await getTicketRecord(decoded.id);
+
+    console.log('[validate] decoded', decoded);
+    console.log('[validate] store', stored);
 
     if (!stored) {
       return res.status(404).json({ ok: false, reason: 'BILLET_INCONNU' });
