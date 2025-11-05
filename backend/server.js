@@ -150,7 +150,7 @@ async function sendTicketEmail(to, ticket) {
     .replace(/{{EVENT_DATE}}/g, EVENT_DATE)
     .replace(/{{NAME}}/g, ticket.name)
     .replace(/{{TICKET_ID}}/g, ticket.id)
-    .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
+    .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP table réservée(plat compris & service personnalisé)' : 'Entrée Standard ')
     .replace(/{{QR_DATA_URL}}/g, `cid:${qrCid}`);
 
   return sendEmailHTML(
