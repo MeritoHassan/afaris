@@ -117,13 +117,6 @@ async function validateTicket(token){
       body: JSON.stringify({ token })
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('validate error', response.status, text);
-      setStatus('Erreur serveur pendant la validation.', 'bad');
-      return;
-    }
-
     const text = await response.text();
     let data;
     try {
@@ -131,6 +124,20 @@ async function validateTicket(token){
     } catch (err) {
       console.error('JSON parse error', err, text);
       setStatus('Réponse inattendue de la validation.', 'bad');
+      return;
+    }
+
+    if (!response.ok) {
+      console.error('validate error', response.status, data);
+      if (data.reason === 'BILLET_DEJA_UTILISE') {
+        setStatus('⛔ Billet déjà scanné. Refusé.', 'bad');
+      } else if (data.reason === 'BILLET_INCONNU') {
+        setStatus('❌ Billet introuvable.', 'bad');
+      } else if (data.reason === 'BILLET_HASH_INVALID') {
+        setStatus('❌ Billet invalide (hash).', 'bad');
+      } else {
+        setStatus('Erreur serveur pendant la validation.', 'bad');
+      }
       return;
     }
 
