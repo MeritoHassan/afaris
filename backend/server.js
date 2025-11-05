@@ -90,8 +90,10 @@ if (!EMAILS_ENABLED) {
   console.warn('📭 BREVO_API_KEY ou FROM_EMAIL manquant → e-mails désactivés');
 }
 
-async function sendEmailHTML(to, subject, html, attachments = []) {
+async function sendEmailHTML(to, subject, html, options = {}) {
   if (!EMAILS_ENABLED) throw new Error('EMAIL_DISABLED');
+
+  const { attachments = [], inlineImages = {} } = options;
 
   try {
     const payload = {
@@ -117,6 +119,10 @@ async function sendEmailHTML(to, subject, html, attachments = []) {
       }));
     }
 
+    if (inlineImages && Object.keys(inlineImages).length) {
+      payload.inlineImage = inlineImages;
+    }
+
     await axios.post(BREVO_API_URL, payload, {
       headers: {
         'api-key': BREVO_API_KEY,
@@ -137,7 +143,7 @@ async function sendTicketEmail(to, ticket) {
   const htmlTpl = fs.readFileSync(templatePath, 'utf8');
   const qrPngBuffer = await QRCode.toBuffer(ticket.jwt, { width: 300, margin: 1 });
   const qrBase64 = qrPngBuffer.toString('base64');
-  const qrDataUrl = `data:image/png;base64,${qrBase64}`;
+  const qrCid = `qr-${ticket.id}.png`;
 
   const html = htmlTpl
     .replace(/{{EVENT_NAME}}/g, EVENT_NAME)
@@ -145,19 +151,17 @@ async function sendTicketEmail(to, ticket) {
     .replace(/{{NAME}}/g, ticket.name)
     .replace(/{{TICKET_ID}}/g, ticket.id)
     .replace(/{{TICKET_TYPE}}/g, ticket.type === 'vip' ? 'Entrée VIP (menu compris)' : 'Entrée Standard (sans menu)')
-    .replace(/{{QR_DATA_URL}}/g, qrDataUrl);
+    .replace(/{{QR_DATA_URL}}/g, `cid:${qrCid}`);
 
   return sendEmailHTML(
     to,
     `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
     html,
-    [
-      {
-        name: `ticket-${ticket.id}.png`,
-        content: qrBase64,
-        contentType: 'image/png',
+    {
+      inlineImages: {
+        [qrCid]: qrBase64,
       },
-    ]
+    }
   );
 }
 
