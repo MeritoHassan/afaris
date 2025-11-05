@@ -477,14 +477,14 @@ app.post('/api/paypal/capture-order', async (req, res) => {
   }
 });
 
-app.post('/api/validate', (req, res) => {
+app.post('/api/validate', async (req, res) => {
   try {
     const token = String(req.body.token || '');
     if (!token) return res.status(400).json({ ok: false, reason: 'TOKEN_MANQUANT' });
 
     const decoded = jwt.verify(token, JWT_SECRET);
     let ticket = tickets.get(decoded.id);
-    const stored = getTicketRecord(decoded.id);
+    const stored = await getTicketRecord(decoded.id);
 
     if (!stored) {
       return res.status(404).json({ ok: false, reason: 'BILLET_INCONNU' });
@@ -519,7 +519,7 @@ app.post('/api/validate', (req, res) => {
 
     ticket.status = 'used';
     tickets.set(ticket.id, ticket);
-    updateTicketStatus(ticket.id, 'used');
+    await updateTicketStatus(ticket.id, 'used');
 
     return res.json({
       ok: true,
