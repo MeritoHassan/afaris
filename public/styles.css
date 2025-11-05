@@ -318,9 +318,9 @@ header .btn.small {
 footer {
   text-align: center;
   padding: 2rem;
-  font-size: 0.85rem;
   background: var(--bg-dark);
   color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 /* ---------- RESPONSIVE ---------- */
@@ -452,8 +452,10 @@ footer {
     max-width: 100%;
   }
 
-  footer {
-    padding: 1.6rem 1.2rem;
+  footer .foot {
+    flex-direction: column;
+    gap: 0.6rem;
+    align-items: center;
   }
 
   .hero-image img {
