@@ -492,6 +492,13 @@ app.post('/api/validate', (req, res) => {
 
     const expectedHash = computeHash(stored.email, decoded.id, decoded.type || stored.type);
     if (!expectedHash || stored.hash !== expectedHash) {
+      console.warn('Hash mismatch', {
+        ticketId: decoded.id,
+        storedHash: stored.hash,
+        expectedHash,
+        email: stored.email,
+        type: decoded.type || stored.type,
+      });
       return res.status(400).json({ ok: false, reason: 'BILLET_HASH_INVALID' });
     }
 
