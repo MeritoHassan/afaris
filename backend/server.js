@@ -13,13 +13,13 @@ const {
   getTicketRecord,
   computeHash,
   updateTicketStatus,
-  FIREBASE_ENABLED,
+  SUPABASE_ENABLED,
 } = require('./utils/ticketsStore');
 
 const app = express();
 
-if (!FIREBASE_ENABLED) {
-  console.warn('⚠️ Firestore non configuré → stockage des tickets en mode fallback local');
+if (!SUPABASE_ENABLED) {
+  console.warn('⚠️ Supabase non configuré → stockage des tickets en mode fallback local');
 }
 
 // ---------- CORS configuration ----------

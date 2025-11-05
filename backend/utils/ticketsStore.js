@@ -1,60 +1,53 @@
-const admin = require('firebase-admin');
+const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 const {
-  FIREBASE_PROJECT_ID,
-  FIREBASE_CLIENT_EMAIL,
-  FIREBASE_PRIVATE_KEY,
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
 } = process.env;
 
-const hasFirebaseCredentials =
-  FIREBASE_PROJECT_ID && FIREBASE_CLIENT_EMAIL && FIREBASE_PRIVATE_KEY;
+let supabase = null;
+let supabaseEnabled = false;
 
-let firestore = null;
-if (hasFirebaseCredentials) {
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
   try {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: FIREBASE_PROJECT_ID,
-          clientEmail: FIREBASE_CLIENT_EMAIL,
-          privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      });
-    }
-    firestore = admin.firestore();
-    console.log('✅ Firestore initialisé pour les tickets');
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        persistSession: false,
+      },
+    });
+    supabaseEnabled = true;
+    console.log('✅ Supabase initialisé pour les tickets');
   } catch (err) {
-    console.error('❌ Initialisation Firestore échouée :', err.message);
-    firestore = null;
+    console.error('❌ Initialisation Supabase échouée :', err.message);
   }
+} else {
+  console.warn('⚠️ Supabase non configuré → fallback JSON local');
 }
 
 const FALLBACK_DATA_DIR = path.join(__dirname, '..', 'data');
 const FALLBACK_STORE_FILE = path.join(FALLBACK_DATA_DIR, 'tickets.fallback.json');
-const FALLBACK_ENABLED = !firestore;
 let fallbackCache = null;
 
-function ensureFallbackFile() {
-  if (!FALLBACK_ENABLED) return;
+function ensureFallback() {
+  if (fallbackCache) return;
+
   if (!fs.existsSync(FALLBACK_DATA_DIR)) fs.mkdirSync(FALLBACK_DATA_DIR, { recursive: true });
   if (!fs.existsSync(FALLBACK_STORE_FILE)) fs.writeFileSync(FALLBACK_STORE_FILE, '{}', 'utf8');
-  if (!fallbackCache) {
-    try {
-      fallbackCache = JSON.parse(fs.readFileSync(FALLBACK_STORE_FILE, 'utf8'));
-    } catch (err) {
-      console.error('ticketsStore fallback: JSON invalide → réinitialisation');
-      fallbackCache = {};
-      fs.writeFileSync(FALLBACK_STORE_FILE, '{}', 'utf8');
-    }
+
+  try {
+    fallbackCache = JSON.parse(fs.readFileSync(FALLBACK_STORE_FILE, 'utf8'));
+  } catch (err) {
+    console.error('ticketsStore fallback: JSON invalide → réinitialisation');
+    fallbackCache = {};
+    fs.writeFileSync(FALLBACK_STORE_FILE, '{}', 'utf8');
   }
 }
 
 function writeFallback() {
-  if (!FALLBACK_ENABLED) return;
-  ensureFallbackFile();
+  if (!fallbackCache) return;
   fs.writeFileSync(FALLBACK_STORE_FILE, JSON.stringify(fallbackCache, null, 2), 'utf8');
 }
 
@@ -71,35 +64,59 @@ async function saveTicketRecord(ticket) {
     email: ticket.email,
     type: ticket.type,
     hash: ticket.hash,
-    issuedAt: ticket.issuedAt,
+    issued_at: ticket.issuedAt,
     status: ticket.status || 'valid',
   };
-  if (firestore) {
-    await firestore.collection('tickets').doc(ticket.id).set(record, { merge: true });
+
+  if (supabaseEnabled) {
+    const { error } = await supabase.from('tickets').upsert({
+      id: ticket.id,
+      ...record,
+    });
+    if (error) {
+      console.error('Supabase upsert ticket échoué :', error.message);
+    }
     return;
   }
-  ensureFallbackFile();
+
+  ensureFallback();
   fallbackCache[ticket.id] = record;
   writeFallback();
 }
 
 async function getTicketRecord(ticketId) {
-  if (firestore) {
-    const snap = await firestore.collection('tickets').doc(ticketId).get();
-    return snap.exists ? snap.data() : null;
+  if (supabaseEnabled) {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('id', ticketId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Supabase get ticket échoué :', error.message);
+    }
+    return data || null;
   }
-  ensureFallbackFile();
+
+  ensureFallback();
   return fallbackCache[ticketId] || null;
 }
 
 async function updateTicketStatus(ticketId, status) {
-  if (firestore) {
-    const data = { status };
-    if (status === 'used') data.usedAt = Date.now();
-    await firestore.collection('tickets').doc(ticketId).set(data, { merge: true });
+  if (supabaseEnabled) {
+    const payload = { status };
+    if (status === 'used') payload.used_at = new Date().toISOString();
+    const { error } = await supabase
+      .from('tickets')
+      .update(payload)
+      .eq('id', ticketId);
+    if (error) {
+      console.error('Supabase update ticket échoué :', error.message);
+    }
     return;
   }
-  ensureFallbackFile();
+
+  ensureFallback();
   if (!fallbackCache[ticketId]) return;
   fallbackCache[ticketId].status = status;
   if (status === 'used') fallbackCache[ticketId].usedAt = Date.now();
@@ -111,5 +128,5 @@ module.exports = {
   saveTicketRecord,
   getTicketRecord,
   updateTicketStatus,
-  FIREBASE_ENABLED: Boolean(firestore),
+  SUPABASE_ENABLED: supabaseEnabled,
 };
