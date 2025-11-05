@@ -158,6 +158,13 @@ async function sendTicketEmail(to, ticket) {
     `[${EVENT_NAME}] Votre billet – ${ticket.id}`,
     html,
     {
+      attachments: [
+        {
+          name: `ticket-${ticket.id}.png`,
+          content: qrBase64,
+          contentType: 'image/png',
+        },
+      ],
       inlineImages: {
         [qrCid]: qrBase64,
       },
