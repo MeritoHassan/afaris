@@ -1,15 +1,13 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `backend/` héberge l’API Express (PayPal, billets, e-mails) et sert le frontend. Stocker toutes les variables dans `backend/.env` (non versionné).
-- `backend/data/` conserve les tickets émis dans un JSON (`tickets.json`) avec hash + statut pour validation offline (fichier ignoré par Git).
-- En production, le stockage des billets s’appuie sur Firestore (`firebase-admin`). Si aucune clé n’est fournie, le fallback JSON est utilisé.
-- `public/` contient les pages statiques : `index.html`, `purchase.html` (SDK PayPal injecté dynamiquement) et la feuille `styles.css`.
-- Le sélecteur de langue Google Translate est intégré dans `index.html` et `purchase.html`; adaptez-le si vous changez la navigation.
-- `backend/.env.congig` ne contient plus de secrets : remplacez les valeurs `__REMPLIR_AVANT_DEPLOIEMENT__` avant de créer votre `.env` local ou vos variables Render.
-- `public/admin/login.html` est un placeholder affichant les instructions de contact tant que l’authentification n’est pas implémentée.
+- `backend/` héberge l’API Express (PayPal, billets, e-mails) et sert le frontend. Conservez toutes les variables dans `backend/.env` (non versionné).
+- `backend/utils/ticketsStore.js` persiste les billets dans Supabase (`tickets` table). Sans `SUPABASE_*`, un fallback JSON (`backend/data/tickets.fallback.json`) est alimenté automatiquement.
+- `admin/` contient le module d’authentification et le scanner accessibles via `/admin/login` et `/admin/scanner` (protégés par cookie signé).
+- `public/` regroupe les pages statiques : `index.html`, `purchase.html` (SDK PayPal injecté dynamiquement) et `styles.css`.
+- Le sélecteur de langue Google Translate est intégré dans `index.html` et `purchase.html`; adaptez-le si la navigation évolue.
+- `backend/.env.congig` sert de gabarit : remplacez les placeholders `__REMPLIR_AVANT_DEPLOIEMENT__` avant de générer vos variables Render.
 - `emails/` regroupe les modèles HTML utilisés par Brevo – modifier uniquement les valeurs entre `{{...}}`.
-- `scanner/` fournit `scanner.html`, pensé pour les contrôles mobiles hors caisse.
 
 ## Build, Test, and Development Commands
 - `cd backend && npm install` : installer ou mettre à jour les dépendances.
@@ -32,16 +30,15 @@
     -d '{"name":"Test","email":"test@example.com","tickets":{"standard":2,"vip":1}}'
   ```
   Capturer ensuite l’`id` retourné avec `/api/paypal/capture-order` (après validation dans le dashboard sandbox). La réponse fournit la liste des `ticketIds` et le nombre d’e-mails effectivement envoyés.
-- Valider le scanner avec un billet test : `curl -s http://localhost:4000/scanner/scanner.html` (vérifier le rendu) puis scanner le QR reçu, observer la réponse JSON (`BILLET_HASH_INVALID`, `BILLET_DEJA_UTILISE`, etc.).
-- Pour une commande multi-billets, confirmer que la réponse `/api/paypal/capture-order` retourne bien la liste des `ticketIds`, que `backend/data/tickets.json` contient chaque hash, et que chaque e-mail individuel est reçu (un QR code par message).
+- Valider le scanner : se connecter via `/admin/login`, ouvrir `/admin/scanner`, puis flasher un QR récent. Contrôler la réponse (`BILLET_DEJA_UTILISE`, `BILLET_HASH_INVALID`, etc.) et la mise à jour du statut dans Supabase ou le fallback.
+- Pour une commande multi-billets, confirmer que la réponse `/api/paypal/capture-order` retourne bien la liste des `ticketIds`, que `backend/data/tickets.fallback.json` est synchronisé, et que chaque e-mail individuel est reçu (un QR code par message).
 ## Commit & Pull Request Guidelines
 - Commits impératifs et ciblés (`Implement Brevo mailer`). Rassembler backend + frontend dans la même PR pour chaque fonctionnalité.
 - Dans la description : objectif, variables d’environnement à ajouter/mettre à jour (`PAYPAL_*`, `BREVO_API_KEY`, `FROM_EMAIL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CORS_ALLOWED_ORIGINS`, `ENABLE_TEST_TICKETS`), scénario de test manuel, captures responsives si l’UI évolue.
 - Relier les tickets clients (Trello/Notion) pour garder la traçabilité.
 
 ## Security & Configuration Tips
-- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `BREVO_API_KEY`, `FROM_EMAIL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://afaris-tickets.onrender.com`, `ENABLE_TEST_TICKETS=false` sur l’environnement de production.
-- Si Supabase n’est pas configuré, le fallback JSON local reste actif mais n’est pas partagé entre environnements.
-- Si Firestore n’est pas configuré, le fallback JSON local reste actif mais n’est pas partagé entre environnements.
+- Ne jamais committer les secrets. `.env` doit inclure au minimum : `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `BREVO_API_KEY`, `FROM_EMAIL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `ADMIN_PASSWORD`, `CORS_ALLOWED_ORIGINS=https://afaris.be,https://afaris.onrender.com`, `ENABLE_TEST_TICKETS=false` en production.
+- Sans Supabase, le fallback JSON local fonctionne, mais il n’est pas partagé entre environnements : vider ce fichier après chaque évènement.
 - Ajouter d’autres origines séparées par des virgules si un domaine d’administration ou une préprod est prévu.
-- Le QR reste signé côté serveur : tester régulièrement l’endpoint `/api/validate` depuis `scanner/scanner.html` et surveiller les journaux de validation lors des évènements.
+- Le QR reste signé côté serveur : solliciter `/api/validate` uniquement via le scanner d’administration et surveiller les journaux de validation pendant les soirées.

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AFARIS – Scanner des billets</title>
+  <style>
+    :root{color-scheme:dark;}
+    body{margin:0;font-family:'Poppins',system-ui,sans-serif;background:#0b0f1a;color:#e9eef8;min-height:100vh;display:flex;flex-direction:column}
+    header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#111827;border-bottom:1px solid rgba(255,255,255,.08)}
+    header h2{margin:0;font-size:1.2rem}
+    header nav{display:flex;gap:12px;align-items:center}
+    header a{color:#e9eef8;text-decoration:none;font-weight:600;font-size:0.9rem}
+    header a.btn{padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.15)}
+    main{flex:1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px}
+    video,canvas{width:100%;max-width:420px;border-radius:12px}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    .btn{padding:10px 18px;border-radius:999px;border:1px solid #ff2674;background:#ff2674;color:#fff;font-weight:600;cursor:pointer}
+    .btn.secondary{background:transparent;border-color:#2a2f45}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    .status{padding:12px 14px;border-radius:10px;background:#111827;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center}
+    .status.ok{background:#14532d}
+    .status.bad{background:#7f1d1d}
+    footer{padding:18px;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(255,255,255,.08)}
+  </style>
+</head>
+<body>
+  <header>
+    <h2>AFARIS – Contrôle des billets</h2>
+    <nav>
+      <a href="/">Retour au site</a>
+      <form method="post" action="/admin/logout" style="margin:0">
+        <button type="submit" class="btn secondary" style="border:1px solid rgba(255,255,255,.25);color:#e9eef8;background:transparent;cursor:pointer">Déconnexion</button>
+      </form>
+    </nav>
+  </header>
+  <main>
+    <video id="video" playsinline hidden></video>
+    <canvas id="canvas" hidden></canvas>
+    <div class="actions">
+      <button id="startBtn" class="btn">Démarrer la caméra</button>
+      <button id="stopBtn" class="btn secondary" hidden>Arrêter</button>
+    </div>
+    <div id="msg" class="status" role="status" aria-live="polite">Cliquez sur « Démarrer la caméra » pour scanner un billet.</div>
+  </main>
+  <footer>
+    Support WhatsApp : <a href="https://wa.me/32493925577" style="color:inherit">+32 493 92 55 77</a>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    const API = '/api/validate';
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const msg = document.getElementById('msg');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    let stream = null;
+    let scanning = false;
+
+    function setStatus(text, type){
+      msg.textContent = text;
+      msg.className = 'status';
+      if(type === 'ok') msg.classList.add('ok');
+      if(type === 'bad') msg.classList.add('bad');
+    }
+
+    function stopStream(){
+      scanning = false;
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+      }
+      video.hidden = true;
+      stopBtn.hidden = true;
+      startBtn.disabled = false;
+    }
+
+    async function start(){
+      if(!navigator.mediaDevices?.getUserMedia){
+        setStatus('Caméra non supportée sur cet appareil.', 'bad');
+        startBtn.disabled = true;
+        return;
+      }
+      try{
+        startBtn.disabled = true;
+        setStatus('Initialisation de la caméra…');
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        video.srcObject = stream;
+        await video.play();
+        video.hidden = false;
+        stopBtn.hidden = false;
+        setStatus('Scanner actif. Visez un QR code de billet.');
+        scanning = true;
+        requestAnimationFrame(tick);
+      }catch(err){
+        console.error(err);
+        setStatus('Caméra inaccessible. Vérifiez les autorisations.', 'bad');
+        startBtn.disabled = false;
+      }
+    }
+
+    async function tick(){
+      if(!scanning) return;
+
+      if(video.readyState === video.HAVE_ENOUGH_DATA){
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if(code?.data){
+          scanning = false;
+          await validateTicket(code.data);
+          setTimeout(()=>{
+            scanning = true;
+            requestAnimationFrame(tick);
+          }, 1200);
+          return;
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    async function validateTicket(token){
+      try{
+        const response = await fetch(API, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ token })
+        });
+
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          console.error('JSON parse error', err, text);
+          setStatus('Réponse inattendue de la validation.', 'bad');
+          return;
+        }
+
+        if (!response.ok) {
+          console.error('validate error', response.status, data);
+          if (data.reason === 'BILLET_DEJA_UTILISE') {
+            setStatus('⛔ Billet déjà scanné. Refusé.', 'bad');
+          } else if (data.reason === 'BILLET_INCONNU') {
+            setStatus('❌ Billet introuvable.', 'bad');
+          } else if (data.reason === 'BILLET_HASH_INVALID') {
+            setStatus('❌ Billet invalide (hash).', 'bad');
+          } else if (data.reason === 'ADMIN_UNAUTHORIZED') {
+            setStatus('Session expirée. Merci de vous reconnecter.', 'bad');
+          } else {
+            setStatus('Erreur serveur pendant la validation.', 'bad');
+          }
+          return;
+        }
+
+        if(data.ok){
+          setStatus(`✅ Billet valide : ${data.ticketId} – ${data.name} (${data.type})`, 'ok');
+        }else{
+          setStatus(`❌ Refusé : ${data.reason || 'Billet invalide'}`, 'bad');
+        }
+      }catch(err){
+        console.error(err);
+        setStatus('Erreur réseau durant la validation.', 'bad');
+      }
+    }
+
+    startBtn.addEventListener('click', start);
+    stopBtn.addEventListener('click', ()=>{
+      stopStream();
+      setStatus('Caméra stoppée. Cliquez pour reprendre.');
+    });
+
+    window.addEventListener('beforeunload', stopStream);
+  </script>
+</body>
+</html>

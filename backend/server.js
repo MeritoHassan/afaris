@@ -2,12 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+
 const {
   saveTicketRecord,
   getTicketRecord,
@@ -16,6 +18,29 @@ const {
   SUPABASE_ENABLED,
 } = require('./utils/ticketsStore');
 
+const {
+  PORT = 4000,
+  HOST = '0.0.0.0',
+  EVENT_NAME = 'Soirée AFARIS – Décembre 2025',
+  EVENT_DATE = '2025-12-27',
+  ORGANIZER_EMAIL = 'billets@afaris.com',
+  JWT_SECRET = 'dev_secret',
+  PAYPAL_ENV = 'sandbox',
+  PAYPAL_CLIENT_ID,
+  PAYPAL_SECRET,
+  FROM_EMAIL,
+  BREVO_API_KEY,
+  ADMIN_PASSWORD,
+  COOKIE_SECRET = 'cookie_dev',
+  ENABLE_TEST_TICKETS = 'true',
+  CORS_ALLOWED_ORIGINS = '',
+} = process.env;
+
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const IS_PRODUCTION = NODE_ENV === 'production';
+const TEST_TICKETS_ENABLED = String(ENABLE_TEST_TICKETS).toLowerCase() === 'true';
+const ADMIN_ENABLED = Boolean((ADMIN_PASSWORD || '').trim());
+
 const app = express();
 
 if (!SUPABASE_ENABLED) {
@@ -23,7 +48,7 @@ if (!SUPABASE_ENABLED) {
 }
 
 // ---------- CORS configuration ----------
-const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+const corsAllowedOrigins = (CORS_ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -48,25 +73,7 @@ const corsMiddleware = corsAllowedOrigins.length
 
 app.use(corsMiddleware);
 app.use(bodyParser.json());
-
-// ---------- ENV ----------
-const {
-  PORT = 4000,
-  HOST = '0.0.0.0',
-  EVENT_NAME = 'Soirée AFARIS – Décembre 2025',
-  EVENT_DATE = '2025-12-27',
-  ORGANIZER_EMAIL = 'billets@afaris.com',
-  JWT_SECRET = 'dev_secret',
-
-  PAYPAL_ENV = 'sandbox',
-  PAYPAL_CLIENT_ID,
-  PAYPAL_SECRET,
-
-  FROM_EMAIL,
-  BREVO_API_KEY,
-  ENABLE_TEST_TICKETS = 'true',
-} = process.env;
-
+app.use(bodyParser.urlencoded({ extended: false }));
 const PAYPAL_BASE_URL =
   PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 
@@ -75,12 +82,97 @@ const TICKET_PRICES = Object.freeze({
   vip: 45,
 });
 
-const TEST_TICKETS_ENABLED = String(ENABLE_TEST_TICKETS).toLowerCase() === 'true';
+app.use(cookieParser(COOKIE_SECRET));
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  signed: true,
+  secure: IS_PRODUCTION,
+  path: '/',
+  maxAge: 12 * 60 * 60 * 1000, // 12 heures
+};
 
 // ---------- Stores mémoire ----------
 const tickets = new Map(); // billets émis
 const pendingOrders = new Map(); // commandes PayPal en attente de capture
 const completedOrders = new Map(); // commande PayPal -> tickets émis (idempotence)
+
+const publicDir = path.join(__dirname, '..', 'public');
+const adminDir = path.join(__dirname, '..', 'admin');
+const adminLoginPath = path.join(adminDir, 'login.html');
+const adminScannerPath = path.join(adminDir, 'scanner.html');
+
+function isAdminAuthenticated(req) {
+  return ADMIN_ENABLED && req.signedCookies.adminAuth === 'ok';
+}
+
+function requireAdmin(req, res, next) {
+  if (!ADMIN_ENABLED) {
+    return res.status(403).send('Administration désactivée');
+  }
+  if (isAdminAuthenticated(req)) return next();
+  const redirectTarget = encodeURIComponent(req.originalUrl || '/admin/scanner');
+  return res.redirect(`/admin/login?redirect=${redirectTarget}`);
+}
+
+function requireAdminApi(req, res, next) {
+  if (!ADMIN_ENABLED) {
+    return res.status(403).json({ ok: false, reason: 'ADMIN_DESACTIVE' });
+  }
+  if (isAdminAuthenticated(req)) return next();
+  return res.status(401).json({ ok: false, reason: 'ADMIN_UNAUTHORIZED' });
+}
+
+// ---------- Admin routes ----------
+app.get('/admin/login', (req, res) => {
+  if (!ADMIN_ENABLED) {
+    return res.status(503).send('Administration non configurée');
+  }
+
+  if (isAdminAuthenticated(req)) {
+    const redirectTarget = req.query.redirect;
+    if (redirectTarget && redirectTarget.startsWith('/admin')) {
+      return res.redirect(redirectTarget);
+    }
+    return res.redirect('/admin/scanner');
+  }
+
+  return res.sendFile(adminLoginPath);
+});
+
+app.post('/admin/login', (req, res) => {
+  if (!ADMIN_ENABLED) {
+    return res.status(503).send('Administration non configurée');
+  }
+
+  const password = String(req.body.password || '');
+  const redirectTarget = String(req.body.redirect || '/admin/scanner');
+  const safeRedirect =
+    redirectTarget && redirectTarget.startsWith('/admin') ? redirectTarget : '/admin/scanner';
+
+  if (password === ADMIN_PASSWORD) {
+    res.cookie('adminAuth', 'ok', cookieOptions);
+    return res.redirect(safeRedirect);
+  }
+
+  return res.redirect(`/admin/login?error=1&redirect=${encodeURIComponent(safeRedirect)}`);
+});
+
+app.post('/admin/logout', requireAdmin, (req, res) => {
+  res.clearCookie('adminAuth', {
+    httpOnly: true,
+    sameSite: 'lax',
+    signed: true,
+    secure: IS_PRODUCTION,
+    path: '/',
+  });
+  res.redirect('/admin/login');
+});
+
+app.get('/admin/scanner', requireAdmin, (_req, res) => {
+  res.sendFile(adminScannerPath);
+});
 
 // ---------- Email (Brevo via API) ----------
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
@@ -244,7 +336,7 @@ app.get('/api/config', (_req, res) => {
   });
 });
 
-app.get('/admin/api/me', (_req, res) => {
+app.get('/admin/api/me', requireAdminApi, (_req, res) => {
   res.status(204).end();
 });
 
@@ -424,8 +516,6 @@ app.post('/api/paypal/capture-order', async (req, res) => {
 
     pendingOrders.delete(orderId);
 
-    pendingOrders.delete(orderId);
-
     const items = meta.items || {
       standard: meta.ticketType === 'vip' ? 0 : 1,
       vip: meta.ticketType === 'vip' ? 1 : 0,
@@ -488,7 +578,7 @@ app.post('/api/paypal/capture-order', async (req, res) => {
   }
 });
 
-app.post('/api/validate', async (req, res) => {
+app.post('/api/validate', requireAdminApi, async (req, res) => {
   try {
     const token = String(req.body.token || '');
     if (!token) return res.status(400).json({ ok: false, reason: 'TOKEN_MANQUANT' });
@@ -547,13 +637,6 @@ app.post('/api/validate', async (req, res) => {
 });
 
 // ---------- Static frontend (après API) ----------
-const publicDir = path.join(__dirname, '..', 'public');
-const scannerDir = path.join(__dirname, '..', 'scanner');
-
-app.use('/scanner', express.static(scannerDir));
-app.get('/scanner', (_req, res) => {
-  res.sendFile(path.join(scannerDir, 'scanner.html'));
-});
 app.use('/', express.static(publicDir));
 
 // ---------- Start ----------
