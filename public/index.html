@@ -70,6 +70,43 @@
     </div>
   </main>
 
+  <section id="experience" class="experience-section">
+    <div class="experience-content">
+      <p class="eyebrow">Avant-goût de la soirée</p>
+      <h2>Plongez dans l’ambiance AFARIS</h2>
+      <p>Extraits exclusifs, énergie live et immersion totale : découvrez le teaser officiel avant de réserver votre table.</p>
+      <ul class="experience-points">
+        <li>Extraits capturés lors des répétitions privées d’Arido.</li>
+        <li>Sonorisation identique à celle du show 2025.</li>
+        <li>Moments VIP, ambiance dancefloor et coulisses.</li>
+      </ul>
+      <div class="countdown" aria-label="Compte à rebours avant la soirée AFARIS">
+        <div>
+          <span id="cd-days">--</span>
+          <small>jours</small>
+        </div>
+        <div>
+          <span id="cd-hours">--</span>
+          <small>heures</small>
+        </div>
+        <div>
+          <span id="cd-minutes">--</span>
+          <small>minutes</small>
+        </div>
+        <div>
+          <span id="cd-seconds">--</span>
+          <small>secondes</small>
+        </div>
+      </div>
+      <a href="#tickets" class="btn primary">Je réserve mon billet</a>
+    </div>
+    <div class="experience-video">
+      <video src="/assets/teaser_highlight.mp4" controls muted loop playsinline poster="/assets/artist_arido.png" aria-label="Teaser vidéo AFARIS">
+        Votre navigateur ne supporte pas la vidéo HTML5. Téléchargez le teaser <a href="/assets/teaser_highlight.mp4">en cliquant ici</a>.
+      </video>
+    </div>
+  </section>
+
   <section id="tickets" class="tickets-section">
     <h2>Choisissez votre billet</h2>
 
@@ -222,6 +259,37 @@
       btnFwd.addEventListener('click', ()=> audio.currentTime = Math.min((audio.currentTime||0)+10, audio.duration||audio.currentTime+10));
       btnRew.addEventListener('click', ()=> audio.currentTime = Math.max((audio.currentTime||0)-10, 0));
       btnMute.addEventListener('click', ()=> { audio.muted = !audio.muted; btnMute.textContent = audio.muted ? '🔇 Non muet' : '🔈 Muet'; });
+    })();
+  </script>
+
+  <!-- Compte à rebours -->
+  <script>
+    (function(){
+      const target = new Date('2025-12-27T19:00:00+01:00').getTime();
+      const els = {
+        days: document.getElementById('cd-days'),
+        hours: document.getElementById('cd-hours'),
+        minutes: document.getElementById('cd-minutes'),
+        seconds: document.getElementById('cd-seconds'),
+      };
+      function pad(v){ return String(v).padStart(2,'0'); }
+      function tick(){
+        const now = Date.now();
+        let diff = Math.max(target - now, 0);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        diff -= days * 1000 * 60 * 60 * 24;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        diff -= hours * 1000 * 60 * 60;
+        const minutes = Math.floor(diff / (1000 * 60));
+        diff -= minutes * 1000 * 60;
+        const seconds = Math.floor(diff / 1000);
+        els.days.textContent = pad(days);
+        els.hours.textContent = pad(hours);
+        els.minutes.textContent = pad(minutes);
+        els.seconds.textContent = pad(seconds);
+      }
+      tick();
+      setInterval(tick, 1000);
     })();
   </script>
 
