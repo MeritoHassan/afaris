@@ -392,6 +392,29 @@ header .btn.small {
   color: var(--text-light);
 }
 
+.map-card {
+  margin: 2rem auto 0;
+  max-width: 760px;
+  border-radius: 1.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+  background: rgba(11, 12, 22, 0.85);
+}
+
+.map-card iframe {
+  width: 100%;
+  display: block;
+  height: 350px;
+}
+
+.map-help {
+  padding: 1rem 1.2rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.2);
+}
+
 /* ---------- FOOTER ---------- */
 footer {
   text-align: center;
