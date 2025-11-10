@@ -45,6 +45,7 @@ header .logo {
 header .logo img {
   height: 40px;
   width: 40px;
+  animation: logoPulse 8s ease-in-out infinite;
 }
 
 header .logo span {
@@ -617,4 +618,15 @@ footer .foot {
     order: 2;
     width: 100%;
   }
+}
+.logo img {
+  animation: logoPulse 8s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,38,116,0)); }
+  20% { transform: scale(1.05) rotate(2deg); filter: drop-shadow(0 0 8px rgba(255,38,116,0.5)); }
+  40% { transform: scale(1) rotate(-2deg); filter: drop-shadow(0 0 4px rgba(255,38,116,0.3)); }
+  60% { transform: scale(1.03) rotate(1deg); filter: drop-shadow(0 0 6px rgba(255,38,116,0.4)); }
+  100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,38,116,0)); }
 }
