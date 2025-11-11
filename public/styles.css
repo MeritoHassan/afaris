@@ -56,11 +56,27 @@ header .logo img {
   z-index: 1;
 }
 
-header .logo span {
+header .logo .logo-word {
+  display: inline-flex;
+  gap: 0.1rem;
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-light);
+  letter-spacing: 0.08em;
 }
+
+.logo-word span {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: letterReveal 0.55s ease-out forwards;
+}
+
+.logo-word span:nth-child(1) { animation-delay: 0.1s; }
+.logo-word span:nth-child(2) { animation-delay: 0.18s; }
+.logo-word span:nth-child(3) { animation-delay: 0.26s; }
+.logo-word span:nth-child(4) { animation-delay: 0.34s; }
+.logo-word span:nth-child(5) { animation-delay: 0.42s; }
+.logo-word span:nth-child(6) { animation-delay: 0.5s; }
 
 header .logo::after {
   content: '';
@@ -92,10 +108,20 @@ header .logo::after {
   100% { opacity: 0; transform: translateX(60%); }
 }
 
+@keyframes letterReveal {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   header .logo,
   header .logo::after {
     animation: none;
+  }
+  .logo-word span {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 
