@@ -45,17 +45,58 @@ header .logo {
   gap: 0.6rem;
   text-decoration: none;
   color: var(--text-light);
+  position: relative;
+  animation: logoIntro 0.9s ease-out forwards, logoFloat 4s ease-in-out 0.9s infinite;
 }
 
 header .logo img {
   height: 40px;
   width: 40px;
+  position: relative;
+  z-index: 1;
 }
 
 header .logo span {
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-light);
+}
+
+header .logo::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  background: linear-gradient(120deg, rgba(255,38,116,0), rgba(255,38,116,0.6), rgba(255,38,116,0));
+  opacity: 0;
+  transform: translateX(-60%);
+  filter: blur(8px);
+  animation: logoSweep 1.2s ease-out 0.3s forwards;
+  pointer-events: none;
+}
+
+@keyframes logoIntro {
+  0% { opacity: 0; transform: translateY(10px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes logoFloat {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes logoSweep {
+  0% { opacity: 0; transform: translateX(-80%); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(60%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  header .logo,
+  header .logo::after {
+    animation: none;
+  }
 }
 
 header nav a {
