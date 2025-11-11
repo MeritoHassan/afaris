@@ -31,9 +31,12 @@ header.navbar {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 3rem;
-  background: transparent;
-  position: relative;
-  z-index: 10;
+  background: rgba(11, 12, 22, 0.85);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 header .logo {
