@@ -15,6 +15,7 @@ const {
   getTicketRecord,
   computeHash,
   updateTicketStatus,
+  listTicketRecords,
   SUPABASE_ENABLED,
 } = require('./utils/ticketsStore');
 
@@ -338,6 +339,20 @@ app.get('/api/config', (_req, res) => {
 
 app.get('/admin/api/me', requireAdminApi, (_req, res) => {
   res.status(204).end();
+});
+
+app.get('/admin/api/tickets/export', requireAdminApi, async (_req, res) => {
+  try {
+    const ticketsList = await listTicketRecords();
+    res.json({
+      generatedAt: new Date().toISOString(),
+      count: ticketsList.length,
+      tickets: ticketsList,
+    });
+  } catch (err) {
+    console.error('export tickets error:', err.message);
+    res.status(500).json({ ok: false, error: 'EXPORT_IMPOSSIBLE' });
+  }
 });
 
 app.get('/api/smtp-check', (_req, res) => {

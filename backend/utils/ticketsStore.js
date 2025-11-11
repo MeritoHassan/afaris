@@ -3,10 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const {
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-} = process.env;
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 
 let supabase = null;
 let supabaseEnabled = false;
@@ -134,10 +131,36 @@ async function updateTicketStatus(ticketId, status) {
   writeFallback();
 }
 
+async function listTicketRecords() {
+  if (supabaseEnabled) {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('id,email,type,hash,status,issued_at,used_at')
+      .order('issued_at', { ascending: false });
+    if (error) {
+      console.error('Supabase list tickets échoué :', error.message);
+      return [];
+    }
+    return data || [];
+  }
+
+  ensureFallback();
+  return Object.entries(fallbackCache || {}).map(([id, record]) => ({
+    id,
+    email: record.email,
+    type: record.type,
+    hash: record.hash,
+    status: record.status,
+    issued_at: record.issued_at || record.issuedAt || null,
+    used_at: record.used_at || record.usedAt || null,
+  }));
+}
+
 module.exports = {
   computeHash,
   saveTicketRecord,
   getTicketRecord,
   updateTicketStatus,
+  listTicketRecords,
   SUPABASE_ENABLED: supabaseEnabled,
 };

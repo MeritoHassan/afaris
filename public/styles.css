@@ -262,6 +262,95 @@ header .btn.small {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.vip-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.5rem;
+  padding: 3.5rem 3rem 1rem;
+  align-items: center;
+}
+
+.vip-content .eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.76rem;
+  color: var(--accent);
+  margin-bottom: 0.6rem;
+}
+
+.vip-content h2 {
+  font-size: 2.3rem;
+  margin-bottom: 1rem;
+}
+
+.vip-content p {
+  color: var(--text-muted);
+}
+
+.vip-perks {
+  list-style: none;
+  margin: 1rem 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.vip-perks li::before {
+  content: '✔';
+  margin-right: 0.5rem;
+  color: var(--accent);
+}
+
+.vip-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.4rem;
+}
+
+.compare-card {
+  border-radius: 1.4rem;
+  padding: 1.6rem;
+  background: rgba(15, 16, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.compare-card h3 {
+  margin-bottom: 1rem;
+}
+
+.compare-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  color: var(--text-muted);
+}
+
+.compare-card ul li::before {
+  content: '•';
+  margin-right: 0.5rem;
+  color: var(--accent);
+}
+
+.compare-card.premium {
+  border-color: rgba(255,38,116,0.5);
+  background: linear-gradient(135deg, rgba(255,38,116,0.18), rgba(15,16,27,0.95));
+}
+
+.compare-card .badge {
+  display: inline-flex;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.15);
+  font-size: 0.78rem;
+  margin-bottom: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
 /* ---------- HERO IMAGE ---------- */
 .hero-image {
   position: relative;
@@ -610,6 +699,15 @@ footer .foot {
   .experience-section {
     grid-template-columns: 1fr;
     padding: 3rem 1.4rem;
+  }
+
+  .vip-section {
+    grid-template-columns: 1fr;
+    padding: 3rem 1.4rem 1.5rem;
+  }
+
+  .vip-compare {
+    grid-template-columns: 1fr;
   }
 
   .countdown {

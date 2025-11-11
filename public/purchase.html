@@ -75,6 +75,11 @@
     .status-box{margin-top:1rem;padding:.9rem 1rem;border-radius:.7rem;background:#10111c;border:1px solid #25273a;color:#c9d0de;font-size:.9rem;line-height:1.5}
     .status-box.error{border-color:#8a1c2b;color:#ff879b;background:#1b1013}
     .status-box.success{border-color:#2d6a4f;color:#9ae6b4;background:#101c16}
+    .vip-upsell{margin:1.4rem 0;padding:1rem 1.4rem;border-radius:1.1rem;background:linear-gradient(135deg,rgba(255,38,116,.18),rgba(11,11,20,.95));border:1px solid rgba(255,38,116,.35);box-shadow:0 12px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:.6rem}
+    .vip-upsell h4{margin:0;font-size:1.2rem;color:#fff;display:flex;align-items:center;gap:.4rem}
+    .vip-upsell p{margin:0;color:#f3cfe2;font-size:.92rem}
+    .vip-upsell ul{margin:0;padding:0;list-style:none;color:#fff;display:flex;flex-direction:column;gap:.4rem;font-size:.92rem}
+    .vip-upsell ul li::before{content:'★';color:#ff5b9a;margin-right:.45rem}
     .success-banner{display:none;margin:2rem auto 0;padding:1.2rem 1.4rem;border-radius:1rem;border:1px solid rgba(45,106,79,.8);background:linear-gradient(120deg,rgba(34,197,94,.15),rgba(15,16,27,.95));color:#e2f9eb;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:760px;gap:.8rem;align-items:center;animation:successSlide .6s ease forwards}
     .success-banner strong{font-size:1.05rem;display:block}
     .success-banner span{color:#c0f0d6;font-size:.9rem}
@@ -150,6 +155,17 @@
         </div>
 
         <div class="badge-note" aria-live="polite">Paiement sécurisé via PayPal (compte ou carte bancaire).</div>
+        <div class="vip-upsell" role="note">
+          <h4>Pass VIP AFARIS – 45€</h4>
+          <p>Passez en VIP et profitez immédiatement de :</p>
+          <ul>
+            <li>Table réservée et service à table.</li>
+            <li>Amuse-bouche signature + coupe d’accueil.</li>
+            <li>Priorité parking privé et entrée coupe-file.</li>
+          </ul>
+          <button type="button" class="btn ghost" id="selectVip">Ajouter un billet VIP</button>
+        </div>
+
         <div id="paypal-buttons" class="paypal-slot" aria-busy="true" aria-live="polite"></div>
         <div id="status" class="status-box">Remplissez vos informations puis finalisez votre achat.</div>
       </section>
@@ -330,6 +346,12 @@
         qty[type] = Math.max(0, qty[type] + dir);
         updateQuantities();
       });
+    });
+
+    document.getElementById('selectVip')?.addEventListener('click', () => {
+      qty.vip = Math.max(1, qty.vip + 1);
+      updateQuantities();
+      setStatus('Billet VIP ajouté à votre panier.', 'info');
     });
 
     const preset = (new URLSearchParams(location.search).get('type') || '').toLowerCase();

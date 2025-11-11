@@ -17,10 +17,19 @@
     .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
     .btn{padding:10px 18px;border-radius:999px;border:1px solid #ff2674;background:#ff2674;color:#fff;font-weight:600;cursor:pointer}
     .btn.secondary{background:transparent;border-color:#2a2f45}
+    .btn.ghost{background:transparent;border-color:rgba(255,255,255,.35);color:#e9eef8}
     .btn[disabled]{opacity:.55;cursor:not-allowed}
     .status{padding:12px 14px;border-radius:10px;background:#111827;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center}
     .status.ok{background:#14532d}
     .status.bad{background:#7f1d1d}
+    .offline-card{margin-top:24px;width:100%;max-width:780px;background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+    .offline-header{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+    .offline-header h3{margin:0;font-size:1.1rem}
+    .offline-header p{margin:.2rem 0 0;color:#cdd0e0;font-size:.92rem;max-width:520px}
+    .offline-actions{display:flex;flex-wrap:wrap;gap:12px}
+    .offline-badge{padding:8px 14px;border-radius:999px;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.35);color:#a7f3d0;font-size:.85rem}
+    .queue-info{margin:0;font-size:.9rem;color:#9ca3c5}
+    label.upload{cursor:pointer}
     footer{padding:18px;text-align:center;font-size:0.85rem;color:#94a3b8;border-top:1px solid rgba(255,255,255,.08)}
   </style>
 </head>
@@ -42,6 +51,25 @@
       <button id="stopBtn" class="btn secondary" hidden>Arrêter</button>
     </div>
     <div id="msg" class="status" role="status" aria-live="polite">Cliquez sur « Démarrer la caméra » pour scanner un billet.</div>
+
+    <section class="offline-card">
+      <div class="offline-header">
+        <div>
+          <h3>Mode hors ligne</h3>
+          <p>Exportez la liste des billets et validez des QR même sans connexion. Importez le fichier JSON le jour J, puis resynchronisez les scans quand le réseau revient.</p>
+        </div>
+        <div id="offlineBadge" class="offline-badge" hidden></div>
+      </div>
+      <div class="offline-actions">
+        <button id="downloadTickets" class="btn secondary" type="button">Télécharger la liste des billets</button>
+        <label class="btn secondary ghost upload">
+          Importer un fichier JSON
+          <input type="file" id="offlineFile" accept="application/json" hidden />
+        </label>
+        <button id="syncQueue" class="btn secondary ghost" type="button">Resynchroniser les validations</button>
+      </div>
+      <p id="queueInfo" class="queue-info">Aucune validation hors ligne en attente.</p>
+    </section>
   </main>
   <footer>
     Support WhatsApp : <a href="https://wa.me/32493925577" style="color:inherit">+32 493 92 55 77</a>
@@ -55,8 +83,21 @@
     const msg = document.getElementById('msg');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
+    const downloadBtn = document.getElementById('downloadTickets');
+    const importInput = document.getElementById('offlineFile');
+    const syncBtn = document.getElementById('syncQueue');
+    const offlineBadge = document.getElementById('offlineBadge');
+    const queueInfo = document.getElementById('queueInfo');
+
+    const STORAGE_DATA_KEY = 'afarisOfflineTickets';
+    const STORAGE_QUEUE_KEY = 'afarisOfflineQueue';
+
     let stream = null;
     let scanning = false;
+    let offlineTickets = new Map();
+    let offlineMeta = null;
+    let offlineQueue = [];
+    const hasWebCrypto = !!(window.crypto && window.crypto.subtle);
 
     function setStatus(text, type){
       msg.textContent = text;
@@ -164,18 +205,242 @@
           setStatus(`❌ Refusé : ${data.reason || 'Billet invalide'}`, 'bad');
         }
       }catch(err){
-        console.error(err);
-        setStatus('Erreur réseau durant la validation.', 'bad');
+        console.warn('validate error', err);
+        const fallback = await validateOffline(token);
+        if(!fallback){
+          setStatus('Impossible de contacter le serveur et aucun mode hors ligne actif.', 'bad');
+        }
       }
     }
 
+    function decodeJwt(token){
+      const parts = token.split('.');
+      if(parts.length < 2) return null;
+      const base64 = parts[1].replace(/-/g,'+').replace(/_/g,'/');
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+      try{
+        return JSON.parse(atob(padded));
+      }catch(err){
+        console.error('decodeJwt error', err);
+        return null;
+      }
+    }
+
+    async function computeHash(email, ticketId, ticketType){
+      if(!email || !ticketId || !ticketType || !hasWebCrypto) return null;
+      const input = `${email.toLowerCase()}|${ticketId}|${ticketType}`;
+      const buffer = new TextEncoder().encode(input);
+      const digest = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+
+    function updateOfflineBadge(){
+      if(!offlineMeta){
+        offlineBadge.hidden = true;
+        return;
+      }
+      const date = offlineMeta.generatedAt ? new Date(offlineMeta.generatedAt) : null;
+      offlineBadge.hidden = false;
+      offlineBadge.textContent = `Liste chargée (${offlineMeta.count} billets · ${date ? date.toLocaleString('fr-BE') : 'date inconnue'})`;
+    }
+
+    function updateQueueInfo(){
+      if(!queueInfo) return;
+      queueInfo.textContent = offlineQueue.length
+        ? `${offlineQueue.length} validation(s) en attente de synchronisation.`
+        : 'Aucune validation hors ligne en attente.';
+    }
+
+    function persistQueue(){
+      try{
+        localStorage.setItem(STORAGE_QUEUE_KEY, JSON.stringify(offlineQueue));
+      }catch(err){
+        console.error('persist queue error', err);
+      }
+    }
+
+    function persistOfflineDataset(){
+      if(!offlineMeta) return;
+      try{
+        const dump = {
+          generatedAt: offlineMeta.generatedAt,
+          tickets: Array.from(offlineTickets.values()),
+        };
+        localStorage.setItem(STORAGE_DATA_KEY, JSON.stringify(dump));
+      }catch(err){
+        console.error('persist dataset error', err);
+      }
+    }
+
+    function applyOfflineDataset(data, persist = true){
+      if(!data || !Array.isArray(data.tickets)){
+        setStatus('Fichier hors-ligne invalide.', 'bad');
+        return;
+      }
+      offlineTickets = new Map();
+      data.tickets.forEach((ticket)=> offlineTickets.set(ticket.id, { ...ticket }));
+      offlineMeta = {
+        generatedAt: data.generatedAt || new Date().toISOString(),
+        count: data.tickets.length,
+      };
+      if(persist) persistOfflineDataset();
+      updateOfflineBadge();
+      setStatus('Liste hors-ligne prête. Vous pouvez scanner sans connexion.', 'ok');
+    }
+
+    async function downloadOfflineTickets(){
+      try{
+        setStatus('Préparation de la liste des billets…');
+        const res = await fetch('/admin/api/tickets/export');
+        if(!res.ok) throw new Error('EXPORT');
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data,null,2)], { type:'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `billets_afaris_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(url), 1000);
+        applyOfflineDataset(data, true);
+      }catch(err){
+        console.error(err);
+        setStatus('Export impossible. Réessayez.', 'bad');
+      }
+    }
+
+    async function handleOfflineImport(event){
+      const file = event.target.files?.[0];
+      if(!file) return;
+      try{
+        const text = await file.text();
+        const json = JSON.parse(text);
+        applyOfflineDataset(json, true);
+      }catch(err){
+        console.error('import offline error', err);
+        setStatus('Fichier JSON invalide.', 'bad');
+      }finally{
+        event.target.value = '';
+      }
+    }
+
+    function enqueueOfflineValidation(token){
+      if(offlineQueue.includes(token)) return;
+      offlineQueue.push(token);
+      persistQueue();
+      updateQueueInfo();
+      processOfflineQueue();
+    }
+
+    async function validateOffline(token){
+      if(!offlineTickets.size){
+        setStatus('Mode hors ligne indisponible : exportez ou importez la liste des billets.', 'bad');
+        return false;
+      }
+      const payload = decodeJwt(token);
+      if(!payload?.id){
+        setStatus('QR illisible en mode hors ligne.', 'bad');
+        return false;
+      }
+      const record = offlineTickets.get(payload.id);
+      if(!record){
+        setStatus('❌ Billet introuvable (hors ligne).', 'bad');
+        return false;
+      }
+      if(hasWebCrypto){
+        const expectedHash = await computeHash(record.email, record.id, payload.type || record.type);
+        if(!expectedHash || expectedHash !== record.hash){
+          setStatus('❌ Billet invalide (hash hors ligne).', 'bad');
+          return false;
+        }
+      }
+      if(record.status === 'used'){
+        setStatus('⛔ Billet déjà scanné (hors ligne).', 'bad');
+        return false;
+      }
+      record.status = 'used';
+      offlineTickets.set(record.id, record);
+      persistOfflineDataset();
+      enqueueOfflineValidation(token);
+      setStatus(`✅ Billet valide (hors ligne) : ${record.id}`, 'ok');
+      return true;
+    }
+
+    async function processOfflineQueue(showStatus){
+      if(!offlineQueue.length){
+        if(showStatus) setStatus('Aucune validation en attente.', 'ok');
+        return;
+      }
+      if(!navigator.onLine){
+        if(showStatus) setStatus('Connexion indisponible : validations en attente.', 'bad');
+        return;
+      }
+      let synced = 0;
+      for(let i = 0; i < offlineQueue.length; ){
+        const token = offlineQueue[i];
+        try{
+          const response = await fetch(API, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ token })
+          });
+          const text = await response.text();
+          let data = null;
+          try{ data = JSON.parse(text); }catch(err){}
+          if(response.ok || data?.reason === 'BILLET_DEJA_UTILISE'){
+            offlineQueue.splice(i,1);
+            synced += 1;
+            persistQueue();
+            continue;
+          }
+          console.error('sync error', data);
+          if(showStatus) setStatus('Synchronisation interrompue. Réessayez plus tard.', 'bad');
+          break;
+        }catch(err){
+          console.error('sync fetch error', err);
+          if(showStatus) setStatus('Connexion instable. Réessayez.', 'bad');
+          break;
+        }
+      }
+      updateQueueInfo();
+      if(!offlineQueue.length && synced){
+        setStatus(`Synchronisation réussie (${synced})`, 'ok');
+      }
+    }
+
+    function loadOfflineState(){
+      try{
+        const raw = localStorage.getItem(STORAGE_DATA_KEY);
+        if(raw){
+          const parsed = JSON.parse(raw);
+          applyOfflineDataset(parsed, false);
+        }
+      }catch(err){
+        console.error('load dataset error', err);
+      }
+      try{
+        const q = localStorage.getItem(STORAGE_QUEUE_KEY);
+        offlineQueue = q ? JSON.parse(q) : [];
+      }catch(err){
+        offlineQueue = [];
+      }
+      updateQueueInfo();
+    }
+
+    downloadBtn?.addEventListener('click', downloadOfflineTickets);
+    importInput?.addEventListener('change', handleOfflineImport);
+    syncBtn?.addEventListener('click', ()=>processOfflineQueue(true));
     startBtn.addEventListener('click', start);
     stopBtn.addEventListener('click', ()=>{
       stopStream();
       setStatus('Caméra stoppée. Cliquez pour reprendre.');
     });
-
     window.addEventListener('beforeunload', stopStream);
+    window.addEventListener('online', ()=>processOfflineQueue());
+
+    loadOfflineState();
+    setInterval(()=>processOfflineQueue(), 15000);
   </script>
 </body>
 </html>
