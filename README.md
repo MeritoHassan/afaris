@@ -39,4 +39,5 @@ emails/    Modèles HTML pour les tickets
 ```
 
 ## Support & contact
-Pour toute question : `billets@afaris.com` ou WhatsApp +32 493 92 55 77.
+Pour toute question :  WhatsApp +32 493 92 55 77.
+
