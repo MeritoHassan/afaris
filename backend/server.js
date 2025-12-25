@@ -593,6 +593,95 @@ app.post('/api/paypal/capture-order', async (req, res) => {
   }
 });
 
+// ---------- Recapture & resend (admin) ----------
+// Relance la capture PayPal et réémet les billets pour un orderId en attente.
+app.post('/admin/api/recapture-order', requireAdminApi, async (req, res) => {
+  try {
+    const orderId = String(req.body.orderId || '').trim();
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const standardQty = Number(req.body.standardQty || 0);
+    const vipQty = Number(req.body.vipQty || 0);
+
+    if (!orderId || !email) {
+      return res.status(400).json({ ok: false, error: 'ORDERID_OU_EMAIL_MANQUANT' });
+    }
+
+    const accessToken = await getPayPalAccessToken();
+    const captureResp = await axios.post(
+      `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const capture = captureResp.data?.purchase_units?.[0]?.payments?.captures?.[0];
+    if (!capture || capture.status !== 'COMPLETED') {
+      return res.status(400).json({
+        ok: false,
+        error: 'PAIEMENT_NON_CAPTURE',
+        details: capture?.status || 'UNKNOWN',
+      });
+    }
+
+    // Si aucune quantité fournie, on envoie 1 standard par défaut
+    const items = {
+      standard: standardQty || (vipQty ? 0 : 1),
+      vip: vipQty || 0,
+    };
+
+    const ticketsIssued = [];
+    const ticketIds = [];
+    const addTickets = async (type, qty) => {
+      const unitPrice = TICKET_PRICES[type];
+      if (!unitPrice || qty <= 0) return;
+      for (let i = 0; i < qty; i += 1) {
+        const ticket = await issueTicket({
+          name: name || email,
+          email,
+          ticketType: type,
+          amount: unitPrice,
+          orderId,
+          captureId: capture.id,
+        });
+        ticketsIssued.push(ticket);
+        ticketIds.push(ticket.id);
+      }
+    };
+
+    await addTickets('standard', items.standard);
+    await addTickets('vip', items.vip);
+
+    let emailsSent = 0;
+    if (EMAILS_ENABLED) {
+      for (const ticket of ticketsIssued) {
+        try {
+          await sendTicketEmail(email, ticket);
+          emailsSent += 1;
+        } catch (mailErr) {
+          console.error('ticket email error (recapture):', mailErr.message);
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      ticketIds,
+      emailsSent,
+      emailSent: EMAILS_ENABLED && emailsSent === ticketsIssued.length,
+      captureStatus: capture.status,
+    });
+  } catch (err) {
+    console.error('recapture-order error:', err.message);
+    const status = err.response?.status || 500;
+    res.status(status).json({ ok: false, error: 'RECAPTURE_FAILED', details: err.message });
+  }
+});
+
 app.post('/api/validate', requireAdminApi, async (req, res) => {
   try {
     const token = String(req.body.token || '');
