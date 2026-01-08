@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AFARIS – Site en maintenance</title>
+  <style>
+    :root {
+      --bg: radial-gradient(circle at 20% 20%, #111827, #0b1221 45%, #050914 70%);
+      --card: rgba(255, 255, 255, 0.06);
+      --accent: #10b981;
+      --text: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+    .card {
+      width: min(520px, 92vw);
+      padding: 32px 28px;
+      border-radius: 24px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.04);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .pulse {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 30%, rgba(16,185,129,0.18), transparent 42%),
+                  radial-gradient(circle at 80% 70%, rgba(59,130,246,0.14), transparent 35%);
+      animation: float 6s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes float {
+      from { transform: translateY(-4px) scale(1); }
+      to { transform: translateY(8px) scale(1.01); }
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(26px, 5vw, 32px);
+      letter-spacing: 0.4px;
+    }
+    p {
+      margin: 0 0 20px;
+      color: rgba(229,231,235,0.82);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(16,185,129,0.12);
+      color: #bbf7d0;
+      border: 1px solid rgba(16,185,129,0.35);
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 14px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .loader {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 18px auto 10px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.6;
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.12s; }
+    .dot:nth-child(3) { animation-delay: 0.24s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.8); opacity: 0.35; }
+      40% { transform: scale(1.1); opacity: 1; }
+    }
+    small {
+      display: block;
+      color: rgba(229,231,235,0.65);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" aria-label="Site en maintenance">
+    <div class="pulse" aria-hidden="true"></div>
+    <div class="badge">Site en construction</div>
+    <h1>On prépare une nouvelle expérience AFARIS</h1>
+    <p>Le site est temporairement indisponible. Revenez très vite : billetterie, actus et événements seront au rendez-vous.</p>
+    <div class="loader" aria-hidden="true">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <small>Merci pour votre patience ✨</small>
+  </div>
+</body>
+</html>

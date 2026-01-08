@@ -741,6 +741,13 @@ app.post('/api/validate', requireAdminApi, async (req, res) => {
 });
 
 // ---------- Static frontend (après API) ----------
+// Maintenance : bloquer l'accès public aux pages statiques (sauf API/admin)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  if (req.path.startsWith('/admin')) return next();
+  return res.sendFile(path.join(publicDir, 'maintenance.html'));
+});
+
 app.use('/', express.static(publicDir));
 
 // ---------- Start ----------
