@@ -1,369 +1,245 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Soirée Arido – Organisé par AFARIS</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <link rel="icon" href="/assets/logo_afaris.png" type="image/png" />
-  <!-- Privacy-friendly analytics by Plausible -->
-  <script async src="https://plausible.io/js/pa-AUNIvzG_5CUrpkovSU-75.js"></script>
-  <script>
-    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-    plausible.init();
-  </script>
-  <!-- Styles légers du modal audio -->
-  <style>
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:9998}
-    .modal{width:min(720px,94vw);background:#0f101b;border:1px solid #2b3042;border-radius:1rem;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}
-    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1rem;background:#151727;border-bottom:1px solid #2b3042}
-    .modal-header h3{margin:0;font-size:1rem}
-    .modal-body{padding:1rem 1.25rem}
-    .audio-wrap{display:flex;align-items:center;gap:1rem;background:#0c0e18;border:1px solid #2a2f45;border-radius:.8rem;padding:1rem}
-    .audio-meta{flex:1;min-width:0}
-    .audio-title{font-weight:700;margin-bottom:.25rem}
-    .audio-sub{color:#9aa3b5;font-size:.92rem}
-    .time{font-variant-numeric:tabular-nums;color:#c7cfdb}
-    .modal-actions{display:flex;justify-content:flex-end;gap:.6rem;padding:.8rem 1rem;background:#0f101b;border-top:1px solid #2b3042}
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AFARIS – Plateforme événementielle & production</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
-
 <body>
   <header class="navbar">
-    <a class="logo" href="/" aria-label="AFARIS">
-      <img src="/assets/logo_afaris.png" alt="" aria-hidden="true" />
-      <span class="logo-word" aria-hidden="true">
-        <span>A</span>
-        <span>F</span>
-        <span>A</span>
-        <span>R</span>
-        <span>I</span>
-        <span>S</span>
-      </span>
+    <a class="logo" href="/">
+      <img src="/assets/logo_afaris.png" alt="AFARIS" />
+      <span>AFARIS</span>
     </a>
     <nav>
-      <a href="#tickets">Billets</a>
-      <a href="#infos">Infos</a>
-      <a href="/admin/login">Scanner</a>
-      <a id="adminLink" class="btn small ghost" href="/admin/login">Connexion</a>
-      <div id="google_translate_element" aria-label="Sélecteur de langue"></div>
+      <a href="#evenements">Événements</a>
+      <a href="#services">Services</a>
+      <a href="#adhesion">Adhésion</a>
+      <a href="#media">Média</a>
+      <a href="#afaris">AFARIS</a>
+      <a href="#contact">Contact</a>
+      <a class="btn small ghost" href="/admin/login">Admin</a>
     </nav>
   </header>
 
-  <main class="hero">
-    <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.78);color:#fff;padding:10px 18px;border-radius:999px;font-weight:700;letter-spacing:0.4px;box-shadow:0 10px 40px rgba(0,0,0,0.25);z-index:5;text-align:center;backdrop-filter:blur(6px);">
-      🚧 Site en (re)construction — une nouvelle expérience arrive très vite
-    </div>
-    <div class="hero-content">
-      <h1><span class="highlight">Arido</span> en concert – Organisé par AFARIS</h1>
-      <p>Une nuit à ne pas manquer. Achetez vos billets maintenant et recevez un QR code unique par e-mail.</p>
-      <div class="hero-buttons">
-        <a href="#tickets" class="btn primary">Acheter mon billet</a>
-        <button id="openTeaser" class="btn ghost" type="button">Écouter le teaser</button>
-      </div>
-      <div class="tags">
-        <span>Paiement PayPal (carte ou compte)</span>
-        <span>QR code unique anti-fraude</span>
-        <span>Scanner à l’entrée</span>
-      </div>
-    </div>
-
-    <div class="hero-image">
-      <img src="/assets/artist_arido.png" alt="Arido"
-           onerror="this.onerror=null; this.src='/assets/logo_afaris.png';" />
-      <div class="event-info">
-        <span>Décembre 2025</span>
-        <span>Bruxelles</span>
-        <span>Ouverture 19:00</span>
-        <a href="#tickets" class="btn small primary">Réserver</a>
-      </div>
-    </div>
-  </main>
-
-  <section id="experience" class="experience-section">
-    <div class="experience-content">
-      <p class="eyebrow">Avant-goût de la soirée</p>
-      <h2>Plongez dans l’ambiance Arido</h2>
-      <p>Extraits exclusifs, énergie live et immersion totale : découvrez le teaser avant de réserver votre table.</p>
-      <ul class="experience-points">
-        <li>Extraits capturés lors des shows précédent d’Arido.</li>
-        <li>Sonorisation identique à celle du show 2025.</li>
-        <li>Moments fort, ambiance dancefloor.</li>
-      </ul>
-      <div class="countdown" aria-label="Compte à rebours avant la soirée AFARIS">
-        <div>
-          <span id="cd-days">--</span>
-          <small>jours</small>
-        </div>
-        <div>
-          <span id="cd-hours">--</span>
-          <small>heures</small>
-        </div>
-        <div>
-          <span id="cd-minutes">--</span>
-          <small>minutes</small>
-        </div>
-        <div>
-          <span id="cd-seconds">--</span>
-          <small>secondes</small>
+  <div class="page">
+    <section class="hero">
+      <div>
+        <div class="pill">Organisation • Billetterie • Services artistes</div>
+        <h1>Plateforme événementielle et production pour artistes & publics</h1>
+        <p>AFARIS organise, produit et accompagne vos projets : billetterie sécurisée, co-production, mise en scène et diffusion. Une équipe dédiée, des partenaires solides.</p>
+        <div class="actions">
+          <a class="btn primary" href="#evenements">Acheter un billet</a>
+          <a class="btn ghost" href="#contact">Parler à AFARIS</a>
         </div>
       </div>
-      <a href="#tickets" class="btn primary">Je réserve mon billet</a>
-    </div>
-    <div class="experience-video">
-      <video src="/assets/teaser_highlight.mp4" controls loop playsinline poster="/assets/covervideo.png" aria-label="Teaser vidéo AFARIS">
-        Votre navigateur ne supporte pas la vidéo HTML5. Téléchargez le teaser <a href="/assets/teaser_highlight.mp4">en cliquant ici</a>.
-      </video>
-    </div>
-  </section>
-
-  <section id="vip" class="vip-section">
-    <div class="vip-content">
-      <p class="eyebrow">Avantages VIP</p>
-      <h2>Vivez la soirée comme un invité d’honneur</h2>
-      <p>Le pass VIP concentre tous les privilèges de la soirée : table réservée, soin culinaire, équipe dédiée et accès prioritaires.</p>
-      <ul class="vip-perks">
-        <li>Table réservée avec service personnalisé.</li>
-        <li>Amuse-bouche signature et service thé/café.</li>
-        <li>Priorité parking privé et entrée coupe-file.</li>
-      </ul>
-      <a href="/purchase.html?type=vip" class="btn primary">Choisir la formule VIP</a>
-    </div>
-    <div class="vip-compare">
-      <article class="compare-card">
-        <h3>Entrée Standard</h3>
-        <ul>
-          <li>Accès complet à la soirée</li>
-          <li>QR nominatif anti-fraude</li>
-          <li>Support WhatsApp en cas de besoin</li>
-        </ul>
-      </article>
-      <article class="compare-card premium">
-        <div class="badge">VIP complet</div>
-        <h3>Entrée VIP</h3>
-        <ul>
-          <li>Table réservée au cœur de la salle</li>
-          <li>Amuse-bouche premium + thé/café chaud</li>
-          <li>Priorité parking privé + entrée dédiée</li>
-          <li>Hôtesse dédiée pendant toute la soirée</li>
-        </ul>
-        <a href="/purchase.html?type=vip" class="btn ghost">Réserver en VIP</a>
-      </article>
-    </div>
-  </section>
-
-  <section id="tickets" class="tickets-section">
-    <h2>Choisissez votre billet</h2>
-
-    <div class="tickets-grid">
-      <div class="ticket-card">
-        <h3>Entrée Standard</h3>
-        <p class="price">30€</p>
-        <p>Accès à la soirée<br><small>Billet nominatif</small></p>
-        <a href="/purchase.html?type=standard" class="btn ghost">Acheter</a>
+      <div class="hero-card">
+        <img src="/assets/covervideo.png" alt="AFARIS events" />
+        <div class="meta">
+          <span class="badge">Billetterie en ligne</span>
+          <span>Production & co-production</span>
+          <span>Équipe artistique dédiée</span>
+        </div>
       </div>
+    </section>
 
-      <div class="ticket-card popular">
-        <div class="badge">Le + populaire</div>
-        <h3>Entrée VIP</h3>
-        <p class="price">45€</p>
-        <p>Table réservée<br><small>Plat compris & service personnalisé</small></p>
-        <a href="/purchase.html?type=vip" class="btn primary">Acheter</a>
-      </div>
-    </div>
-  </section>
-
-  <section id="infos" class="infos-section">
-    <h2>Infos pratiques</h2>
-    <ul>
-      <li><b>Date :</b> 27 Décembre 2025</li>
-      <li><b>Heure :</b> 19:00 • Show à 20:00</li>
-      <li><b>Lieu :</b> Quai de l’Industrie 121, 1080 Molenbeek-Saint-Jean</li>
-    </ul>
-    <div class="map-card">
-      <iframe
-        title="Carte AFARIS Quai de l’Industrie 121"
-        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2519.5330226015316!2d4.3334!3d50.8552!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c3c27d3e768477%3A0x4bcd5df2c22e130c!2sQuai%20de%20l'Industrie%20121%2C%201080%20Molenbeek-Saint-Jean!5e0!3m2!1sfr!2sbe!4v1731260000000!5m2!1sfr!2sbe"
-        width="600"
-        height="350"
-        style="border:0;"
-        allowfullscreen=""
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"></iframe>
-      <div class="map-help">
-        <p>Astuce : utilisez l’icône “Itinéraire” sur la carte pour préparer votre arrivée (voiture, métro, Uber, trottinette, etc.).</p>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <div class="wrap foot">
-      <span>© 2025 AFARIS – Une génération qui construit</span>
-      <div class="contact-whatsapp">
-        <span>Contact WhatsApp :</span>
-        <a href="https://wa.me/32493925577" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp AFARIS">+32&nbsp;493&nbsp;92&nbsp;55&nbsp;77</a>
-      </div>
-      <div class="social-links" aria-label="Réseaux sociaux AFARIS">
-        <a href="https://www.facebook.com/profile.php?id=61582489296334" target="_blank" rel="noopener noreferrer" aria-label="Facebook AFARIS">
-          <span class="sr-only">Facebook</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.12 8.44 9.88v-6.99H7.9v-2.89h2.54V9.41c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.46H15.2c-1.24 0-1.63.77-1.63 1.56v1.87h2.78l-.44 2.89h-2.34v6.99C18.34 21.12 22 16.99 22 12z"></path>
-          </svg>
-        </a>
-        <a href="https://www.instagram.com/afaris.90/" target="_blank" rel="noopener noreferrer" aria-label="Instagram AFARIS">
-          <span class="sr-only">Instagram</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 2C4.24 2 2 4.24 2 7v10c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5H7zm10.5 2c1.38 0 2.5 1.12 2.5 2.5V18.5c0 1.38-1.12 2.5-2.5 2.5H6.5C5.12 21 4 19.88 4 18.5V6.5C4 5.12 5.12 4 6.5 4H17.5zm-5.5 3.5A4.5 4.5 0 1 0 12 19.5 4.5 4.5 0 0 0 12 7.5zm0 2A2.5 2.5 0 1 1 12 14.5 2.5 2.5 0 0 1 12 9.5zm5.25-3.75a1.25 1.25 0 1 0 1.25 1.25 1.25 1.25 0 0 0-1.25-1.25z"></path>
-          </svg>
-        </a>
-        <a href="https://www.tiktok.com/@afarisbx" target="_blank" rel="noopener noreferrer" aria-label="TikTok AFARIS">
-          <span class="sr-only">TikTok</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M21 8.56a5.24 5.24 0 0 1-4.04-1.99v6.18c0 4.13-3.35 7.48-7.48 7.48A7.48 7.48 0 0 1 2 12.75 7.5 7.5 0 0 1 7.25 6.5v3.2a3.32 3.32 0 0 0-2 3.03 3.33 3.33 0 0 0 3.33 3.33c1.84 0 3.33-1.49 3.33-3.33V2h3.44a5.25 5.25 0 0 0 4.72 4.87z"></path>
-          </svg>
-        </a>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Modal audio -->
-  <div id="teaserBackdrop" class="modal-backdrop" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teaserTitle">
-      <div class="modal-header">
-        <h3 id="teaserTitle">Teaser audio — Soirée AFARIS</h3>
-        <button id="closeTeaser" class="btn small ghost" type="button">Fermer</button>
-      </div>
-      <div class="modal-body">
-        <div class="audio-wrap">
-          <button id="togglePlay" class="btn primary" type="button">▶︎ Lecture</button>
-          <div class="audio-meta">
-            <div class="audio-title">Arido – Teaser mix 2025</div>
-            <div class="audio-sub">
-              <span id="cur" class="time">00:00</span> / <span id="dur" class="time">--:--</span>
-            </div>
+    <section id="evenements">
+      <header class="section-head">
+        <div>
+          <h2>Événements à venir</h2>
+          <p>Concerts, shows et productions en cours.</p>
+        </div>
+        <a class="btn ghost" href="#contact">Proposer un événement</a>
+      </header>
+      <div class="grid cols-3">
+        <div class="card event-card">
+          <h3>Show live – Artiste A</h3>
+          <p>Lieu & date à confirmer. Billetterie en ligne.</p>
+          <div class="meta">
+            <span class="tag">Billets en ligne</span>
+            <span>Bruxelles</span>
           </div>
-          <audio id="audio" preload="metadata">
-            <!-- IMPORTANT : chemin absolu vers public/assets/… avec la bonne casse -->
-            <source src="/assets/ARIDO_AFARIS_TEASER_MIX_2MIN.mp3?v=20251105" type="audio/mpeg" />
-            Votre navigateur ne supporte pas l’audio HTML5.
-          </audio>
+          <div class="cta">
+            <a class="btn primary small" href="#contact">Billets</a>
+          </div>
+        </div>
+        <div class="card event-card">
+          <h3>Co-production – Projet B</h3>
+          <p>Accompagnement complet : artistique, production, diffusion.</p>
+          <div class="meta">
+            <span class="tag">Co-prod</span>
+            <span>En montage</span>
+          </div>
+          <div class="cta">
+            <a class="btn ghost small" href="#contact">Discuter</a>
+          </div>
+        </div>
+        <div class="card event-card">
+          <h3>AFARIS x Partenaires</h3>
+          <p>Expérience immersive, billetterie sécurisée, scanning en salle.</p>
+          <div class="meta">
+            <span class="tag">Collab</span>
+            <span>Europe</span>
+          </div>
+          <div class="cta">
+            <a class="btn ghost small" href="#contact">Entrer en relation</a>
+          </div>
         </div>
       </div>
-      <div class="modal-actions">
-        <button id="rewind" class="btn ghost" type="button">⟲ -10s</button>
-        <button id="forward" class="btn ghost" type="button">+10s ⟳</button>
-        <button id="mute" class="btn ghost" type="button">🔈 Muet</button>
+    </section>
+
+    <section id="services">
+      <header class="section-head">
+        <div>
+          <h2>Services AFARIS</h2>
+          <p>Organisation, production, billetterie & accompagnement artistes.</p>
+        </div>
+        <a class="btn primary small" href="#contact">Planifier un call</a>
+      </header>
+      <div class="grid cols-3">
+        <div class="card service-card">
+          <h3>Organisation d’événements</h3>
+          <p>Conception, logistique, équipes techniques et coordination le soir J.</p>
+          <ul>
+            <li>Direction de prod, régie, sécurité</li>
+            <li>Technique son/lumière/vidéo</li>
+            <li>Scanning QR et contrôle d’accès</li>
+          </ul>
+        </div>
+        <div class="card service-card">
+          <h3>Production & co-production</h3>
+          <p>Structurer un projet artistique, gérer le budget et les partenaires.</p>
+          <ul>
+            <li>Éditorial & mise en scène</li>
+            <li>Budget, planning, contrats</li>
+            <li>Partenariats & sponsoring</li>
+          </ul>
+        </div>
+        <div class="card service-card">
+          <h3>Billetterie & artistes</h3>
+          <p>Billets en ligne, QR sécurisés, accompagnement d’artistes.</p>
+          <ul>
+            <li>PayPal, QR code unique, scanner admin</li>
+            <li>Emails automatiques, anti-fraude</li>
+            <li>Coaching et diffusion live</li>
+          </ul>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <section id="adhesion">
+      <header class="section-head">
+        <div>
+          <h2>Adhésion & communauté</h2>
+          <p>Rejoindre AFARIS pour bénéficier d’infos, préventes et accompagnement.</p>
+        </div>
+        <a class="btn ghost small" href="#contact">Nous rejoindre</a>
+      </header>
+      <div class="card">
+        <p>Accès prioritaire aux billetteries, infos production, opportunités partenaires et accompagnement personnalisé.</p>
+        <div class="actions" style="margin-top:14px;">
+          <a class="btn primary small" href="#contact">Devenir membre</a>
+          <a class="btn ghost small" href="#contact">Parler à l’équipe</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="media">
+      <header class="section-head">
+        <div>
+          <h2>Média & actualités</h2>
+          <p>Communiqués, actus d’artistes, coulisses des productions AFARIS.</p>
+        </div>
+        <a class="btn ghost small" href="#contact">Proposer un sujet</a>
+      </header>
+      <div class="grid cols-3">
+        <div class="card media-card">
+          <h3>Actualité #1</h3>
+          <span class="tag">Actu</span>
+          <p>Résumé court d’une actualité AFARIS ou d’une production en cours.</p>
+        </div>
+        <div class="card media-card">
+          <h3>Actualité #2</h3>
+          <span class="tag">Communiqué</span>
+          <p>Annonce partenaire ou institutionnelle pour crédibiliser le projet.</p>
+        </div>
+        <div class="card media-card">
+          <h3>Actualité #3</h3>
+          <span class="tag">Coulisses</span>
+          <p>Un regard sur la production, l’accompagnement d’un artiste.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="afaris">
+      <header class="section-head">
+        <div>
+          <h2>AFARIS</h2>
+          <p>Un projet structuré, né de l’engagement collectif et construit avec sérieux.</p>
+        </div>
+      </header>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>Mission</h3>
+          <p>Créer des expériences scéniques exigeantes, accessibles et sécurisées.</p>
+        </div>
+        <div class="card">
+          <h3>Équipe & partenaires</h3>
+          <p>Techniciens, producteurs, institutions et sponsors engagés.</p>
+        </div>
+        <div class="card">
+          <h3>Chiffres clés</h3>
+          <p>Événements produits, billets écoulés, artistes accompagnés (à renseigner).</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <header class="section-head">
+        <div>
+          <h2>Contact</h2>
+          <p>Collaborations, billetterie, presse, partenariats.</p>
+        </div>
+      </header>
+      <div class="contact-grid">
+        <div class="contact-item">
+          <strong>Email</strong>
+          <span>contact@afaris.be</span>
+        </div>
+        <div class="contact-item">
+          <strong>Téléphone</strong>
+          <span>+32 493 92 55 77</span>
+        </div>
+        <div class="contact-item">
+          <strong>Réseaux</strong>
+          <span>Facebook • Instagram • TikTok</span>
+        </div>
+      </div>
+    </section>
   </div>
 
-
-  <!-- Script Connexion ↔ Déconnexion (ignore 401) -->
-  <script>
-    (function(){
-      const link=document.getElementById('adminLink');
-      fetch('/admin/api/me',{credentials:'include'})
-        .then(r=>r.ok?r.json():null)
-        .then(d=>{ if(d && (d.ok||d.user||d.authenticated)){ link.textContent='Déconnexion (Admin)'; link.href='/admin/logout'; }})
-        .catch(()=>{});
-    })();
-  </script>
-
-  <!-- Script modal audio -->
-  <script>
-    (function(){
-      const backdrop = document.getElementById('teaserBackdrop');
-      const btnOpen  = document.getElementById('openTeaser');
-      const btnClose = document.getElementById('closeTeaser');
-      const btnToggle= document.getElementById('togglePlay');
-      const btnFwd   = document.getElementById('forward');
-      const btnRew   = document.getElementById('rewind');
-      const btnMute  = document.getElementById('mute');
-      const curEl    = document.getElementById('cur');
-      const durEl    = document.getElementById('dur');
-      const audio    = document.getElementById('audio');
-
-      function fmt(t){ if(!isFinite(t)) return '--:--'; const m=Math.floor(t/60), s=Math.floor(t%60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
-
-      function openModal(){
-        backdrop.style.display = 'flex';
-        backdrop.setAttribute('aria-hidden','false');
-        audio.play().catch(()=>{ /* autoplay peut être bloqué */ });
-        btnClose.focus();
-        document.addEventListener('keydown', onEsc);
-      }
-      function closeModal(){
-        backdrop.style.display = 'none';
-        backdrop.setAttribute('aria-hidden','true');
-        audio.pause();
-        document.removeEventListener('keydown', onEsc);
-      }
-      function onEsc(e){ if(e.key === 'Escape') closeModal(); }
-
-      // MàJ temps
-      audio.addEventListener('loadedmetadata', ()=> durEl.textContent = fmt(audio.duration));
-      audio.addEventListener('timeupdate', ()=> {
-        curEl.textContent = fmt(audio.currentTime);
-        btnToggle.textContent = audio.paused ? '▶︎ Lecture' : '⏸︎ Pause';
-      });
-
-      // Boutons
-      if (btnOpen)  btnOpen.addEventListener('click', openModal);
-      btnClose.addEventListener('click', closeModal);
-      backdrop.addEventListener('click', (e)=>{
-        const dialog = e.target.closest('.modal');
-        if (!dialog) closeModal();
-      });
-      btnToggle.addEventListener('click', ()=> audio.paused ? audio.play() : audio.pause());
-      btnFwd.addEventListener('click', ()=> audio.currentTime = Math.min((audio.currentTime||0)+10, audio.duration||audio.currentTime+10));
-      btnRew.addEventListener('click', ()=> audio.currentTime = Math.max((audio.currentTime||0)-10, 0));
-      btnMute.addEventListener('click', ()=> { audio.muted = !audio.muted; btnMute.textContent = audio.muted ? '🔇 Non muet' : '🔈 Muet'; });
-    })();
-  </script>
-
-  <!-- Compte à rebours -->
-  <script>
-    (function(){
-      const target = new Date('2025-12-27T19:00:00+01:00').getTime();
-      const els = {
-        days: document.getElementById('cd-days'),
-        hours: document.getElementById('cd-hours'),
-        minutes: document.getElementById('cd-minutes'),
-        seconds: document.getElementById('cd-seconds'),
-      };
-      function pad(v){ return String(v).padStart(2,'0'); }
-      function tick(){
-        const now = Date.now();
-        let diff = Math.max(target - now, 0);
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        diff -= days * 1000 * 60 * 60 * 24;
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        diff -= hours * 1000 * 60 * 60;
-        const minutes = Math.floor(diff / (1000 * 60));
-        diff -= minutes * 1000 * 60;
-        const seconds = Math.floor(diff / 1000);
-        els.days.textContent = pad(days);
-        els.hours.textContent = pad(hours);
-        els.minutes.textContent = pad(minutes);
-        els.seconds.textContent = pad(seconds);
-      }
-      tick();
-      setInterval(tick, 1000);
-    })();
-  </script>
-
-  <!-- Google Translate -->
-  <script>
-    function googleTranslateElementInit() {
-      new google.translate.TranslateElement({
-        pageLanguage: 'fr',
-        includedLanguages: 'fr,en,nl,ar,so,aa',
-        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-        autoDisplay: false
-      }, 'google_translate_element');
-    }
-  </script>
-  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-
+  <footer>
+    <div class="page">
+      <div class="foot-grid">
+        <div>
+          <strong>AFARIS</strong>
+          <p>Organisation d’événements, production et billetterie.</p>
+        </div>
+        <div>
+          <strong>Pages</strong><br>
+          <a href="#evenements">Événements</a><br>
+          <a href="#services">Services</a><br>
+          <a href="#media">Média</a>
+        </div>
+        <div>
+          <strong>Contact</strong><br>
+          <a href="mailto:contact@afaris.be">contact@afaris.be</a><br>
+          <span>+32 493 92 55 77</span>
+        </div>
+      </div>
+      <div>© 2025 AFARIS – Une génération qui construit.</div>
+    </div>
+  </footer>
 </body>
 </html>
