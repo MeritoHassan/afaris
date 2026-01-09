@@ -35,6 +35,7 @@ const {
   COOKIE_SECRET = 'cookie_dev',
   ENABLE_TEST_TICKETS = 'true',
   CORS_ALLOWED_ORIGINS = '',
+  MAINTENANCE_MODE = 'true',
 } = process.env;
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -741,10 +742,16 @@ app.post('/api/validate', requireAdminApi, async (req, res) => {
 });
 
 // ---------- Static frontend (après API) ----------
-// Maintenance : bloquer l'accès public aux pages statiques (sauf API/admin)
+// Maintenance : bloquer l'accès public aux pages statiques (sauf API/admin) sauf en local/dev
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-  if (req.path.startsWith('/admin')) return next();
+  const maintenanceEnabled = String(MAINTENANCE_MODE).toLowerCase() === 'true';
+  const isApi = req.path.startsWith('/api');
+  const isAdmin = req.path.startsWith('/admin');
+  const isLocalhost =
+    req.hostname === 'localhost' ||
+    req.hostname === '127.0.0.1' ||
+    req.ip === '::1';
+  if (!maintenanceEnabled || isApi || isAdmin || isLocalhost) return next();
   return res.sendFile(path.join(publicDir, 'maintenance.html'));
 });
 
